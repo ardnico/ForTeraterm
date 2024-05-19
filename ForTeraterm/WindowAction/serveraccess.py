@@ -20,6 +20,7 @@ class ServerAccess(customtkinter.CTkFrame):
         self.height = appconf.get_data("height")
         self.font = appconf.get_data("font")
         self.macro_path = appconf.get_data("macro_path")
+        os.makedirs(self.macro_path,exist_ok=True)
         self.font = customtkinter.CTkFont(size=12,family=self.font)
         self.font_b = customtkinter.CTkFont(size=15, weight="bold",family=self.font)
         
@@ -89,7 +90,7 @@ class ServerAccess(customtkinter.CTkFrame):
         
         row_i += 1
         
-        files = glob(os.path.join(self.macro_path,"*.txt"))
+        files = glob(os.path.join(self.macro_path,"*.ttl"))
         files = [os.path.basename(f) for f in files]
         self.macro_combobox = customtkinter.CTkComboBox(self.item_icons_frame
             ,font = self.font
@@ -161,6 +162,7 @@ class ServerAccess(customtkinter.CTkFrame):
                 ,text=self.trans.translate("ServerAccess")
             ))
             self.serveraccess_buttons[i].grid(row=row_i, column=3, padx=padx, pady=pady)
+            self.serveraccess_buttons[i].configure(command=lambda s=s: self.launch_server(s.primaryno))
             self.detail_buttons.append( customtkinter.CTkButton(self.Scroll_frame
                 ,width=60
                 ,image=imginst.image_detail
@@ -196,7 +198,23 @@ class ServerAccess(customtkinter.CTkFrame):
             tmp_flag = "off"
             tmp_flag = self.check_vars[i].get()
             if tmp_flag != "off":
-                print(f"launch server {s.hostname}")
+                macropath = self.macro_combobox.get()
+                macropath = os.path.join(self.macro_path,macropath)
+                if self.check_var_macro.get()=="off":
+                    macropath = None
+                sfm.access_server(s,macropath)
+    
+    def launch_server(self,i):
+        sfm = ServerFileManage()
+        server_info = sfm.get_serverdata(i)
+        tmp_flag = "off"
+        tmp_flag = self.check_vars[i].get()
+        if tmp_flag != "off":
+            macropath = self.macro_combobox.get()
+            macropath = os.path.join(self.macro_path,macropath)
+            if self.check_var_macro.get()=="off":
+                macropath = None
+            sfm.access_server(server_info,macropath)
     
     def show_detail(self,i):
         if i is None:
