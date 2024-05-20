@@ -164,3 +164,4 @@ log/
 serverdata/*.json
 data/
 
+macro/*.ttl

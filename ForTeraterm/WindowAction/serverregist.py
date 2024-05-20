@@ -15,13 +15,13 @@ class ServerRegist(customtkinter.CTkFrame):
         **kwargs):
         self.trans = AppText(appconf.get_data("lang"))
         label_text = ""
-        
         border_width = 20
         self.width = appconf.get_data("width")
         self.height = appconf.get_data("height")
-        self.font = appconf.get_data("font")
         self.macro_path = appconf.get_data("macro_path")
-        label_font                   = customtkinter.CTkFont(size=20, weight="bold",family=self.font)
+        
+        self.font = customtkinter.CTkFont(size=12,family=appconf.get_data("font"))
+        self.font_b = customtkinter.CTkFont(size=15, weight="bold",family=appconf.get_data("font"))
         
         super().__init__(master,
             width                           = self.width
@@ -40,8 +40,6 @@ class ServerRegist(customtkinter.CTkFrame):
         self.call_serverregist_frame()
     
     def call_serverregist_frame(self):
-        font = customtkinter.CTkFont(size=12,family=self.font)
-        font_b = customtkinter.CTkFont(size=15, weight="bold",family=self.font)
         bar_width = 20
         padx = 5
         pady = 5
@@ -50,13 +48,13 @@ class ServerRegist(customtkinter.CTkFrame):
         
         self.title_label = customtkinter.CTkLabel(self
             ,text=label
-            ,width = self.width-10
+            ,width = self.width - 10
             ,height = 25
             ,corner_radius = 10
             ,bg_color = "transparent"
             ,fg_color = theme.back2
             ,text_color = theme.font_color2
-            ,font = font_b
+            ,font = self.font_b
             ,image = imginst.image_server
             ,compound = "left"
             ,anchor = "center"

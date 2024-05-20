@@ -67,7 +67,7 @@ class Mainmenu(customtkinter.CTk):
             )
         self.dropdown3.add_option(option=self.apptxt.translate("Readme"),command=self.about_readme)
         self.dropdown3.add_option(option=self.apptxt.translate("Version"),command=self.about_version)
-        self.dropdown3.add_option(option=self.apptxt.translate("Restart"),command=self.restart)
+        # self.dropdown3.add_option(option=self.apptxt.translate("Restart"),command=self.restart)
         if appconf.get_data("dev_mode") == 1:
             self.dropdown3.add_option(option=self.apptxt.translate("Test"),command=self.test)
         

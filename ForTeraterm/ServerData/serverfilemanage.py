@@ -180,16 +180,16 @@ class ServerFileManage:
             teraterm_command.append("/AUTOWINCLOSE=on")
         if sdata.optionsline:
             teraterm_command.append(sdata.optionsline)
-        subprocess.run(teraterm_command)
+        subprocess.Popen(teraterm_command)
         
     def mk_ttl(self,title,commandline):
         self.trans = AppText(appconf.get_data("lang"))
         if title:
-            base_txt = self.trans.translate("CreateTTLFile")
             file_path = os.path.join(appconf.get_data("macro_path"),f"{title}.ttl")
             if os.path.exists(file_path)==True:
+                with open(file_path,"w",encoding="utf-8") as f:
+                    f.write(commandline)
                 return
             with open(file_path,"w",encoding="utf-8") as f:
-                f.write(base_txt)
-        
-        
+                f.write(commandline)
+    

@@ -53,6 +53,7 @@
     "TeratermIniPath": "Teraterm INI路径",
     "Theme": "主题",
     "LogLevel": "日志级别",
-    "CreateTTLFile": "请创建一个TTL文件。有关编写方法，请参考Teraterm帮助。"
+    "CreateTTLFile": "请创建一个TTL文件。有关编写方法，请参考Teraterm帮助。",
+    "MacroName": "宏名称"
 
 }

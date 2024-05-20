@@ -53,6 +53,6 @@
     "TeratermIniPath": "Teraterm INI Path",
     "Theme": "Theme",
     "LogLevel": "Log Level",
-    "CreateTTLFile": "Please create a TTL file. Refer to the Teraterm help for instructions on how to write it."
-
+    "CreateTTLFile": "Please create a TTL file. Refer to the Teraterm help for instructions on how to write it.",
+    "MacroName": "Macro Name"
 }

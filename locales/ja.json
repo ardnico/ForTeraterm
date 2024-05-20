@@ -53,6 +53,7 @@
     "TeratermIniPath": "Teraterm INIパス",
     "Theme": "テーマ",
     "LogLevel": "ログレベル",
-    "CreateTTLFile": "TTLファイルを作成してください。記載方法についてはTeratermのヘルプを参考にしてください。"
+    "CreateTTLFile": "TTLファイルを作成してください。記載方法についてはTeratermのヘルプを参考にしてください。",
+    "MacroName": "マクロ名"
 
 }

@@ -162,7 +162,7 @@ class ServerAccess(customtkinter.CTkFrame):
                 ,text=self.trans.translate("ServerAccess")
             ))
             self.serveraccess_buttons[i].grid(row=row_i, column=3, padx=padx, pady=pady)
-            self.serveraccess_buttons[i].configure(command=lambda s=s: self.launch_server(s.primaryno))
+            self.serveraccess_buttons[i].configure(command=lambda i=i,s=s: self.launch_server(i,s.primaryno))
             self.detail_buttons.append( customtkinter.CTkButton(self.Scroll_frame
                 ,width=60
                 ,image=imginst.image_detail
@@ -204,17 +204,14 @@ class ServerAccess(customtkinter.CTkFrame):
                     macropath = None
                 sfm.access_server(s,macropath)
     
-    def launch_server(self,i):
+    def launch_server(self,i,s):
         sfm = ServerFileManage()
-        server_info = sfm.get_serverdata(i)
-        tmp_flag = "off"
-        tmp_flag = self.check_vars[i].get()
-        if tmp_flag != "off":
-            macropath = self.macro_combobox.get()
-            macropath = os.path.join(self.macro_path,macropath)
-            if self.check_var_macro.get()=="off":
-                macropath = None
-            sfm.access_server(server_info,macropath)
+        server_info = sfm.get_serverdata(s)
+        macropath = self.macro_combobox.get()
+        macropath = os.path.join(self.macro_path,macropath)
+        if self.check_var_macro.get()=="off":
+            macropath = None
+        sfm.access_server(server_info,macropath)
     
     def show_detail(self,i):
         if i is None:

@@ -53,6 +53,7 @@
     "TeratermIniPath": "Ruta de INI de Teraterm",
     "Theme": "Tema",
     "LogLevel": "Nivel de Registro",
-    "CreateTTLFile": "Por favor, cree un archivo TTL. Consulte la ayuda de Teraterm para obtener instrucciones sobre cómo escribirlo."
+    "CreateTTLFile": "Por favor, cree un archivo TTL. Consulte la ayuda de Teraterm para obtener instrucciones sobre cómo escribirlo.",
+    "MacroName": "Nombre de Macro"
 
 }
