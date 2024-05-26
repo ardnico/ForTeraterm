@@ -46,7 +46,7 @@ class EditMacro(customtkinter.CTkFrame):
         pady = 5
         cell = self.width / 3 - padx * 2 -bar_width
         row_i = 0
-        label = self.trans.translate("ServerAccess")
+        label = self.trans.translate("EditMacro")
         
         self.title_label = customtkinter.CTkLabel(self
             ,text=label

@@ -200,14 +200,15 @@ class Edit(customtkinter.CTkFrame):
             ,anchor = "w"
             )
         self.lang_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew')
-        
+        lang_list = self.trans.lang_list()
+        lang_list = [self.trans.translate(l) for l in lang_list]
         self.lang_combobox = customtkinter.CTkComboBox(self.item_frame
             ,width=cell*4 -bar_width
             ,font = self.font
-            ,values=self.trans.lang_list()
+            ,values=lang_list
         )
         self.lang_combobox.grid(row=row_i, column=1, padx=padx, pady=pady,sticky='ew',columnspan=4)
-        self.lang_combobox.set(appconf.get_data("lang"))
+        self.lang_combobox.set(self.trans.translate(appconf.get_data("lang")))
         
         row_i += 1
         
@@ -430,8 +431,13 @@ class Edit(customtkinter.CTkFrame):
                 appconf.set_data(key,tmp_val)
         theme_val = self.Theme_combobox.get()
         appconf.set_data("Theme",theme_val)
-        lang_val = self.lang_combobox.get()
+        lang_list = self.trans.lang_list()
+        lang_dic = {}
+        for l in lang_list:
+            lang_dic[self.trans.translate(l)] = l
+        
+        lang_val = lang_dic[self.lang_combobox.get()]
         appconf.set_data("lang",lang_val)
         font_val = self.font_combobox.get()
         appconf.set_data("font",font_val)
-        
+        theme.set_theme()

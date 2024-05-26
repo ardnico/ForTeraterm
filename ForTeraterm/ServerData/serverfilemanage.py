@@ -3,6 +3,7 @@ import json
 import dataclasses
 from glob import glob
 import subprocess
+import time
 from .serverdata import ServerDatas
 from .serverdata import MyEncoder
 from .serverdata import server_datas_decoder
@@ -15,70 +16,70 @@ class ServerFileManage:
         os.makedirs(self.datadir,exist_ok=True)
         appconf.set_log()
     
-    @appconf.log_exception
+    # @appconf.log_exception
     def set_serverdata(
         self
-        ,hostname            : str      = None
-        ,user                : str      = None
-        ,psw                 : str      = None
-        ,hostname2           : str      = None
-        ,user2               : str      = None
-        ,psw2                : str      = None
-        ,method              : str      = "passwd"
-        ,optionsline         : str      = None
-        ,teratermini         : str      = None
-        ,filetransdir        : str      = None
-        ,kanjicoder          : str      = None
-        ,kanjicodet          : str      = None
-        ,logfile             : str      = None
-        ,language            : str      = "U"
-        ,telnet              : bool     = False
-        ,timeout             : int      = None
-        ,windowhidden        : bool     = False
-        ,windowtitle         : str      = None
-        ,windowx             : int      = None
-        ,windowy             : int      = None
-        ,autowinclose        : bool     = False
+        ,hostname            : str   = None
+        ,user                : str   = None
+        ,psw                 : str   = None
+        ,usernameinput       : str   = "login:"
+        ,pswinput            : str   = "Password:"
+        ,consolesymbol       : str   = "$"
+        ,hostname2           : str   = None
+        ,user2               : str   = None
+        ,psw2                : str   = None
+        ,usernameinput2      : str   = "login:"
+        ,pswinput2           : str   = "Password:"
+        ,consolesymbol2      : str   = "$"
+        ,optionsline         : str   = None
+        ,teratermini         : str   = None
+        ,filetransdir        : str   = None
+        ,kanjicoder          : str   = None
+        ,kanjicodet          : str   = None
+        ,language            : str   = "U"
+        ,telnet              : str  = "ssh"
+        ,telnet2             : str  = "ssh"
+        ,timeout             : int   = None
+        ,windowhidden        : bool  = False
+        ,windowtitle         : str   = None
+        ,windowx             : int   = None
+        ,windowy             : int   = None
+        ,autowinclose        : bool  = False
         ):
         primaryno = self.get_primary_number()
         if primaryno is None:
             return
-        if user:
-            user = appconf.enc.encrypt(user)
-        else:
-            return
-        if psw:
-            psw = appconf.enc.encrypt(psw)
-        if user2:
-            user2 = appconf.enc.encrypt(user2)
-        if psw2:
-            psw2 = appconf.enc.encrypt(psw2)
         self.serverdata = ServerDatas(
-            primaryno
-            ,hostname
-            ,user
-            ,psw
-            ,hostname2
-            ,user2
-            ,psw2
-            ,method
-            ,optionsline
-            ,teratermini
-            ,filetransdir
-            ,kanjicoder
-            ,kanjicodet
-            ,logfile
-            ,language
-            ,telnet
-            ,timeout
-            ,windowhidden
-            ,windowtitle
-            ,windowx
-            ,windowy
-            ,autowinclose
+            primaryno      
+            ,hostname       
+            ,user           
+            ,psw            
+            ,usernameinput  
+            ,pswinput       
+            ,consolesymbol  
+            ,hostname2      
+            ,user2          
+            ,psw2           
+            ,usernameinput2 
+            ,pswinput2          
+            ,consolesymbol2 
+            ,optionsline    
+            ,teratermini    
+            ,filetransdir   
+            ,kanjicoder     
+            ,kanjicodet     
+            ,language       
+            ,telnet         
+            ,telnet2        
+            ,timeout        
+            ,windowhidden   
+            ,windowtitle    
+            ,windowx        
+            ,windowy        
+            ,autowinclose   
         )
     
-    @appconf.log_exception
+    # @appconf.log_exception
     def get_primary_number(self):
         files = glob(os.path.join(self.datadir, "[0-9]" * 5 + ".json"))
         if len(files) == 0:
@@ -89,14 +90,12 @@ class ServerFileManage:
                 return i
         return None
     
-    @appconf.log_exception
-    def get_json(self):
-        if self.serverdata:
-            enc = MyEncoder()
-            return enc.default(self.serverdata)
-        return None
+    # @appconf.log_exception
+    def get_json(self,sdata: ServerDatas):
+        enc = MyEncoder()
+        return enc.default(sdata)
     
-    @appconf.log_exception
+    # @appconf.log_exception
     def get_serverdata(self, primary_number):
         filename = os.path.join(self.datadir, f"{str(primary_number).zfill(5)}.json")
         if not os.path.exists(filename):
@@ -114,15 +113,29 @@ class ServerFileManage:
             tmp_serverdata.psw2 = appconf.enc.decrypt(tmp_serverdata.psw2)
         return tmp_serverdata
     
-    @appconf.log_exception
-    def save_serverdata(self):
-        if self.serverdata:
-            filename = os.path.join(self.datadir, f"{str(self.serverdata.primaryno).zfill(5)}.json")
-            with open(filename, 'w') as f:
-                d = self.get_json()
-                json.dump(d, f, indent=2)
+    # @appconf.log_exception
+    def delete_serverdata(self,primaryno):
+        primaryno = str(primaryno)
+        filename = os.path.join(self.datadir, f"{primaryno.zfill(5)}.json")
+        if os.path.exists(filename)==True:
+            os.remove(filename)
     
-    @appconf.log_exception
+    # @appconf.log_exception
+    def save_serverdata(self,sdata: ServerDatas):
+        if sdata.user:
+            sdata.user = appconf.enc.encrypt(sdata.user)
+        if sdata.psw:
+            sdata.psw = appconf.enc.encrypt(sdata.psw)
+        if sdata.user2:
+            sdata.user2 = appconf.enc.encrypt(sdata.user2)
+        if sdata.psw2:
+            sdata.psw2 = appconf.enc.encrypt(sdata.psw2)
+        filename = os.path.join(self.datadir, f"{str(sdata.primaryno).zfill(5)}.json")
+        with open(filename, 'w') as f:
+            d = self.get_json(sdata)
+            json.dump(d, f, indent=2)
+    
+    # @appconf.log_exception
     def get_serverdatas(self):
         ret = []
         files = glob(os.path.join(self.datadir, "[0-9]" * 5 + ".json"))
@@ -133,54 +146,168 @@ class ServerFileManage:
             ret.append(self.get_serverdata(i))
         return ret
     
-    def access_server(self,sdata:ServerDatas,macro_path):
-        teraterm_command = [appconf.get_data("TeratermPath")]
-        if sdata.telnet == True:
-            teraterm_command.append(f"telnet://{sdata.hostname}")
-            teraterm_command.append(f"/T=1")
+    def tmp_macro_exec(self,sdata: ServerDatas,optionsline,macro_path):
+        if macro_path is None or macro_path == "":
+            macro_txt = ""
         else:
-            teraterm_command.append(sdata.hostname)
-            teraterm_command.append(f"/T=0")
-        teraterm_command.append(f"/auth={sdata.hostname}")
-        teraterm_command.append(f"/user={sdata.user}")
-        if sdata.method == "passwd":
-            teraterm_command.append(f"/passwd={sdata.psw}")
-        elif sdata.method == "publickey":
-            teraterm_command.append(f"/keyfile={sdata.psw}")
-        
-        hostname2           : str   = None
-        user2               : str   = None
-        psw2                : str   = None
+            with open(macro_txt,"r",encoding="utf-8") as f:
+                macro_txt = f.read()
+        tmp_macro_path = os.path.join(os.getcwd(),"tmp_macro_exec_txt.ttl")
+        tmp_macro_txt = f"""
+;Setting
+hostname='{sdata.hostname}'
+user='{sdata.user}'
+psw='{sdata.psw}'
+usernameinput='{sdata.usernameinput}'
+pswinput='{sdata.pswinput}'
+consolesymbol='{sdata.consolesymbol}'
 
+sshtelnet='{sdata.telnet}'
+connectoptionline='{optionsline}'
+
+hostname2='{sdata.hostname2}'
+user2='{sdata.user2}'
+psw2='{sdata.psw2}'
+usernameinput2='{sdata.usernameinput2}'
+pswinput2='{sdata.pswinput2}'
+consolesymbol2='{sdata.consolesymbol2}'
+telnet2='{sdata.telnet2}'
+consolesymbol2='{sdata.consolesymbol2}'
+
+;data check
+strcompare hostname ''
+if result=0 goto fail0
+
+goto login
+;Additional Process
+:addprocess
+timeout='{sdata.timeout}'
+
+{macro_txt}
+
+goto eol
+;login process
+:login
+getdate datestr '%y%m%d'
+connectline=hostname
+
+strmatch ssh sshtelnet
+if result=0 goto setcline1
+
+strmatch telnet sshtelnet
+if result=0 goto setcline2
+
+strmatch con sshtelnet
+if result=0 goto setcline3
+
+
+:setcline1
+strconcat connectline ' /ssh'
+strtrim sshtelnet 'ssh'
+strcompare sshtelnet ''
+if result=0 goto setclin11
+strtrim sshtelnet ' /'sshtelnet' '
+:setcline11
+goto setcline21
+
+:setcline2
+strconcat connectline ':23 /T=1 '
+
+:setcline21
+strconcat connectline connectoptionline
+timeout=3
+strconcat connectline ' /L='hostname'.log'
+connect connectline
+if result<>2 goto fail1
+
+wait usernameinput
+:inputuser
+sendln user
+wait pswinput
+if result=0 goto inputuser
+sendln psw
+
+goto setcline4
+:setcline3
+connectline=' /C='
+strtrim sshtelnet 'con'
+strcompare sshtelnet ''
+if result=0 goto fail0
+strtrim sshtelnet ' /'sshtelnet' '
+
+strconcat connectline connectoptionline
+strconcat connectline ' /L=COM'sshtelnet'.log'
+
+connect connectline
+
+:setcline4
+wait consolesymbol
+
+strcompare hostname2 ''
+if result=0 goto addprocess
+
+connectline2=telnet2' 'hostname2
+connect connectline2
+wait usernameinput2
+:inputuser2
+sendln user2
+wait pswinput2
+if result=0 goto inputuser2
+sendln psw2
+wait consolesymbol2
+
+goto addprocess
+
+:fail0
+titleline='Value error'
+failmsg='No server was selected'
+goto msgbox
+
+:fail1
+titleline=hostname
+failmsg='Failed to connect bastion server'
+goto msgbox
+
+:fail2
+titleline=hostname2
+failmsg='Failed to connect target server'
+:msgbox
+messagebox failmsg titleline
+:eol
+        """
+        with open(tmp_macro_path,"w",encoding="utf-8") as f:
+            f.write(tmp_macro_txt)
+        subprocess.Popen([appconf.get_data("TeratermPath"),f"/M={tmp_macro_path}"])
+        time.sleep(3)
+        os.remove(tmp_macro_path)
+    
+    def access_server(self,sdata:ServerDatas,macro_path):
+        optionsline = []
         if sdata.teratermini:
-            teraterm_command.append(f"/F={sdata.teratermini}")
+            optionsline.append(f"/F={sdata.teratermini}")
         if sdata.filetransdir:
-            teraterm_command.append(f"/FD={sdata.filetransdir}")
-        
-        # kanjicoder          : str   = None
-        # kanjicodet          : str   = None
-        
-        if sdata.logfile:
-            teraterm_command.append(f"/FD={sdata.logfile}")
+            optionsline.append(f"/FD={sdata.filetransdir}")
+        if sdata.kanjicoder:
+            optionsline.append(f"/KR={sdata.kanjicoder}")
+        if sdata.kanjicodet:
+            optionsline.append(f"/KT={sdata.kanjicodet}")
         if sdata.language:
-            teraterm_command.append(f"/LA={sdata.language}")
-        if macro_path:
-            teraterm_command.append(f"/M={macro_path}")
-        if sdata.timeout:
-            teraterm_command.append(f"/TIMEOUT={sdata.timeout}")
+            optionsline.append(f"/LA={sdata.language}")
         if sdata.windowhidden:
-            teraterm_command.append(f"/V")
+            optionsline.append(f"/V")
         if sdata.windowtitle:
-            teraterm_command.append(f"/W={sdata.windowtitle}")
+            optionsline.append(f"/W={sdata.windowtitle}")
         if sdata.windowx:
-            teraterm_command.append(f"/X={sdata.windowx}")
+            optionsline.append(f"/X={sdata.windowx}")
         if sdata.windowy:
-            teraterm_command.append(f"/Y={sdata.windowy}")
+            optionsline.append(f"/Y={sdata.windowy}")
         if sdata.autowinclose:
-            teraterm_command.append("/AUTOWINCLOSE=on")
+            optionsline.append("/AUTOWINCLOSE=on")
         if sdata.optionsline:
-            teraterm_command.append(sdata.optionsline)
-        subprocess.Popen(teraterm_command)
+            optionsline.append(sdata.optionsline)
+        
+        optionsline = " ".join(optionsline)
+        self.tmp_macro_exec(sdata,optionsline,macro_path)
         
     def mk_ttl(self,title,commandline):
         self.trans = AppText(appconf.get_data("lang"))

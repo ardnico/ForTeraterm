@@ -19,6 +19,13 @@
     "fr": "Francés",
     "de": "Alemán",
     "zh": "Chino",
+    "E": "Inglés",
+    "J": "Japonés",
+    "K": "Coreano",
+    "R": "Ruso",
+    "ko": "Coreano",
+    "ru": "Ruso",
+    "U": "UTF-8",
     "Hostname": "Nombre del Host",
     "Username": "Nombre de Usuario",
     "Password": "Contraseña",
@@ -54,6 +61,16 @@
     "Theme": "Tema",
     "LogLevel": "Nivel de Registro",
     "CreateTTLFile": "Por favor, cree un archivo TTL. Consulte la ayuda de Teraterm para obtener instrucciones sobre cómo escribirlo.",
-    "MacroName": "Nombre de Macro"
-
+    "MacroName": "Nombre de Macro",
+    "PublicKey": "Clave Pública",
+    "FileTransferFolder": "Carpeta de Transferencia de Archivos",
+    "KanjiCodeReceive": "Código Kanji (Recepción)",
+    "KanjiCodeSend": "Código Kanji (Envío)",
+    "LineStartCharacter": "Carácter de Inicio de Línea",
+    "LoginWaitString": "Cadena de Espera de Inicio de Sesión",
+    "PasswordWaitString": "Cadena de Espera de Contraseña",
+    "OtherOptions": "Otras Opciones",
+    "SecondServer": "Segundo Servidor",
+    "WindowTitleName": "Nombre del Título de la Ventana","WindowShowHide": "Mostrar/Ocultar Ventana",
+    "AutoWindowClose": "Cierre Automático de Ventana"
 }

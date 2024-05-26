@@ -19,6 +19,13 @@
     "fr": "Französisch",
     "de": "Deutsch",
     "zh": "Chinesisch",
+    "E": "Englisch",
+    "J": "Japanisch",
+    "K": "Koreanisch",
+    "ko": "Koreanisch",
+    "R": "Russisch",
+    "ru": "Russisch",
+    "U": "UTF-8",
     "Hostname": "Hostname",
     "Username": "Benutzername",
     "Password": "Passwort",
@@ -54,6 +61,17 @@
     "Theme": "Thema",
     "LogLevel": "Protokollebene",
     "CreateTTLFile": "Bitte erstellen Sie eine TTL-Datei. Informationen zur Erstellung finden Sie in der Teraterm-Hilfe.",
-    "MacroName": "Makroname"
-
+    "MacroName": "Makroname",
+    "PublicKey": "Öffentlicher Schlüssel",
+    "FileTransferFolder": "Dateiübertragungsordner",
+    "KanjiCodeReceive": "Kanji-Code (Empfang)",
+    "KanjiCodeSend": "Kanji-Code (Senden)",
+    "LineStartCharacter": "Zeilenanfangszeichen",
+    "LoginWaitString": "Anmelde-Wartestring",
+    "PasswordWaitString": "Passwort-Wartestring",
+    "OtherOptions": "Weitere Optionen",
+    "SecondServer": "Zweiter Server",
+    "WindowTitleName": "Fenstertitelname",
+    "WindowShowHide": "Fenster Anzeigen/Verbergen",
+    "AutoWindowClose": "Automatisches Schließen des Fensters"
 }

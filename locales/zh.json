@@ -19,6 +19,13 @@
     "fr": "法语",
     "de": "德语",
     "zh": "中文",
+    "E": "英语",
+    "J": "日语",
+    "K": "韩语",
+    "R": "俄语",
+    "ko": "韩语",
+    "ru": "俄语",
+    "U": "UTF-8",
     "Hostname": "主机名",
     "Username": "用户名",
     "Password": "密码",
@@ -54,6 +61,17 @@
     "Theme": "主题",
     "LogLevel": "日志级别",
     "CreateTTLFile": "请创建一个TTL文件。有关编写方法，请参考Teraterm帮助。",
-    "MacroName": "宏名称"
-
+    "MacroName": "宏名称",
+    "PublicKey": "公钥",
+    "FileTransferFolder": "文件传输文件夹",
+    "KanjiCodeReceive": "汉字编码（接收）",
+    "KanjiCodeSend": "汉字编码（发送）",
+    "LineStartCharacter": "行首字符",
+    "LoginWaitString": "登录等待字符串",
+    "PasswordWaitString": "密码等待字符串",
+    "OtherOptions": "其他选项",
+    "SecondServer": "第二服务器",
+    "WindowTitleName": "窗口标题名称",
+    "WindowShowHide": "窗口显示/隐藏",
+    "AutoWindowClose": "自动关闭窗口"
 }

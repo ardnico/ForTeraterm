@@ -165,3 +165,5 @@ serverdata/*.json
 data/
 
 macro/*.ttl
+Output/SetupForTeraterm.exe
+dist/main/*
