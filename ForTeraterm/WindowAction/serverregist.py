@@ -595,7 +595,7 @@ class ServerRegist(customtkinter.CTkFrame):
             ,corner_radius=1
             ,font=self.font
             ,width=dcrlcell
-            ,text=self.trans.translate("Width")
+            ,text=self.trans.translate("PositionX")
         )
         self.windowhidden_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=2)
         
@@ -606,7 +606,7 @@ class ServerRegist(customtkinter.CTkFrame):
             ,corner_radius=1
             ,font=self.font
             ,width=dcrlcell
-            ,text=self.trans.translate("Height")
+            ,text=self.trans.translate("PositionY")
         )
         self.windowhidden_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
         

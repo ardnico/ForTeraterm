@@ -73,5 +73,7 @@
     "SecondServer": "Второй сервер",
     "WindowTitleName": "Название заголовка окна",
     "WindowShowHide": "Показать/скрыть окно",
-    "AutoWindowClose": "Автоматическое закрытие окна"
+    "AutoWindowClose": "Автоматическое закрытие окна",
+    "PositionX": "Позиция X",
+    "PositionY": "Позиция Y"
 }

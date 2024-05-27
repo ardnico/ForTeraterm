@@ -73,5 +73,7 @@
     "SecondServer": "第二服务器",
     "WindowTitleName": "窗口标题名称",
     "WindowShowHide": "窗口显示/隐藏",
-    "AutoWindowClose": "自动关闭窗口"
+    "AutoWindowClose": "自动关闭窗口",
+    "PositionX": "位置 X",
+    "PositionY": "位置 Y"
 }

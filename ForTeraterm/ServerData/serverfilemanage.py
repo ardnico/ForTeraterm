@@ -150,38 +150,44 @@ class ServerFileManage:
         if macro_path is None or macro_path == "":
             macro_txt = ""
         else:
-            with open(macro_txt,"r",encoding="utf-8") as f:
+            with open(macro_path,"r",encoding="utf-8") as f:
                 macro_txt = f.read()
-        tmp_macro_path = os.path.join(os.getcwd(),"tmp_macro_exec_txt.ttl")
+        tmp_macro_path = os.path.join(os.getcwd(),f"tmp_macro_exec_txt{sdata.primaryno}.ttl")
         tmp_macro_txt = f"""
 ;Setting
-hostname='{sdata.hostname}'
-user='{sdata.user}'
-psw='{sdata.psw}'
-usernameinput='{sdata.usernameinput}'
-pswinput='{sdata.pswinput}'
-consolesymbol='{sdata.consolesymbol}'
+hostname='{self.val_none_check(sdata.hostname)}'
+user='{self.val_none_check(sdata.user)}'
+psw='{self.val_none_check(sdata.psw)}'
+usernameinput='{self.val_none_check(sdata.usernameinput)}'
+pswinput='{self.val_none_check(sdata.pswinput)}'
+consolesymbol='{self.val_none_check(sdata.consolesymbol)}'
 
-sshtelnet='{sdata.telnet}'
+sshtelnet='{self.val_none_check(sdata.telnet)}'
 connectoptionline='{optionsline}'
 
-hostname2='{sdata.hostname2}'
-user2='{sdata.user2}'
-psw2='{sdata.psw2}'
-usernameinput2='{sdata.usernameinput2}'
-pswinput2='{sdata.pswinput2}'
-consolesymbol2='{sdata.consolesymbol2}'
-telnet2='{sdata.telnet2}'
-consolesymbol2='{sdata.consolesymbol2}'
+hostname2='{self.val_none_check(sdata.hostname2)}'
+user2='{self.val_none_check(sdata.user2)}'
+psw2='{self.val_none_check(sdata.psw2)}'
+usernameinput2='{self.val_none_check(sdata.usernameinput2)}'
+pswinput2='{self.val_none_check(sdata.pswinput2)}'
+consolesymbol2='{self.val_none_check(sdata.consolesymbol2)}'
+telnet2='{self.val_none_check(sdata.telnet2)}'
+consolesymbol2='{self.val_none_check(sdata.consolesymbol2)}'
 
 ;data check
 strcompare hostname ''
 if result=0 goto fail0
+getdate logfile "log-%Y%m%d-%H%M%S-"
+strconcat logfile hostname
+strconcat logfile '-'
+strconcat logfile hostname2
+strconcat logfile '.log'
+
 
 goto login
 ;Additional Process
 :addprocess
-timeout='{sdata.timeout}'
+timeout={sdata.timeout}
 
 {macro_txt}
 
@@ -191,13 +197,13 @@ goto eol
 getdate datestr '%y%m%d'
 connectline=hostname
 
-strmatch ssh sshtelnet
+strmatch 'ssh' sshtelnet
 if result=0 goto setcline1
 
-strmatch telnet sshtelnet
+strmatch 'telnet' sshtelnet
 if result=0 goto setcline2
 
-strmatch con sshtelnet
+strmatch 'con' sshtelnet
 if result=0 goto setcline3
 
 
@@ -205,21 +211,35 @@ if result=0 goto setcline3
 strconcat connectline ' /ssh'
 strtrim sshtelnet 'ssh'
 strcompare sshtelnet ''
-if result=0 goto setclin11
-strtrim sshtelnet ' /'sshtelnet' '
+if result=0 goto setcline11
+strconcat connectline  ' /'
+strconcat connectline sshtelnet
+strconcat connectline ' '
 :setcline11
 goto setcline21
 
 :setcline2
 strconcat connectline ':23 /T=1 '
+connect connectline
+if result<>2 goto fail1
+goto inputuser0
 
 :setcline21
+strconcat connectline ' /auth=password /user='
+strconcat connectline user
+strconcat connectline ' /passwd='
+strconcat connectline psw
+strconcat connectline ' /L='
+strconcat connectline logfile
+strconcat connectline ' '
 strconcat connectline connectoptionline
 timeout=3
-strconcat connectline ' /L='hostname'.log'
 connect connectline
 if result<>2 goto fail1
 
+goto setcline4
+
+:inputuser0
 wait usernameinput
 :inputuser
 sendln user
@@ -233,10 +253,16 @@ connectline=' /C='
 strtrim sshtelnet 'con'
 strcompare sshtelnet ''
 if result=0 goto fail0
-strtrim sshtelnet ' /'sshtelnet' '
 
+getdate dateline "log-%Y%m%d-%H%M%S-"
+strconcat connectline ' /'
+strconcat connectline sshtelnet
+strconcat connectline ' /L='
+strconcat connectline dateline
+strconcat connectline 'COM'
+strconcat connectline sshtelnet
+strconcat connectline '.log '
 strconcat connectline connectoptionline
-strconcat connectline ' /L=COM'sshtelnet'.log'
 
 connect connectline
 
@@ -281,12 +307,17 @@ messagebox failmsg titleline
         time.sleep(3)
         os.remove(tmp_macro_path)
     
+    def val_none_check(self,val):
+        if val is None:
+            return ""
+        return val
+    
     def access_server(self,sdata:ServerDatas,macro_path):
         optionsline = []
         if sdata.teratermini:
-            optionsline.append(f"/F={sdata.teratermini}")
+            optionsline.append(f'/F="{sdata.teratermini}"')
         if sdata.filetransdir:
-            optionsline.append(f"/FD={sdata.filetransdir}")
+            optionsline.append(f'/FD="{sdata.filetransdir}"')
         if sdata.kanjicoder:
             optionsline.append(f"/KR={sdata.kanjicoder}")
         if sdata.kanjicodet:

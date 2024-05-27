@@ -79,23 +79,47 @@ class Mainmenu(customtkinter.CTk):
             )
         self.menuframe.pack(fill="both")
         
+        self.serveraccess = ServerAccess(self.menuframe)
         self.mainloop()
     
     # @appconf.log_exception
     def action_serveraccess(self):
+        self.reset_frame()
         self.serveraccess = ServerAccess(self.menuframe)
 
     # @appconf.log_exception
     def action_editmacro(self):
+        self.reset_frame()
         self.editmacro = EditMacro(self.menuframe)
 
     # @appconf.log_exception
     def action_serverregist(self):
+        self.reset_frame()
         self.serverregist = ServerRegist(self.menuframe)
 
     # @appconf.log_exception
     def settings_edit(self):
+        self.reset_frame()
         self.edit = Edit(self.menuframe)
+
+    def reset_frame(self):
+        try:
+            self.serveraccess.forget()
+        except:
+            pass
+        try:
+            self.edit.forget()
+        except:
+            pass
+        try:
+            self.serverregist.forget()
+        except:
+            pass
+        try:
+            self.editmacro.forget()
+        except:
+            pass
+        
 
     # @appconf.log_exception
     def about_readme(self):

@@ -73,5 +73,7 @@
     "SecondServer": "Deuxième Serveur",
     "WindowTitleName": "Nom du Titre de la Fenêtre",
     "WindowShowHide": "Afficher/Masquer la Fenêtre",
-    "AutoWindowClose": "Fermeture Automatique de la Fenêtre"
+    "AutoWindowClose": "Fermeture Automatique de la Fenêtre",
+    "PositionX": "Position X",
+    "PositionY": "Position Y"
 }

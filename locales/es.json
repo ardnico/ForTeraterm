@@ -72,5 +72,7 @@
     "OtherOptions": "Otras Opciones",
     "SecondServer": "Segundo Servidor",
     "WindowTitleName": "Nombre del Título de la Ventana","WindowShowHide": "Mostrar/Ocultar Ventana",
-    "AutoWindowClose": "Cierre Automático de Ventana"
+    "AutoWindowClose": "Cierre Automático de Ventana",
+    "PositionX": "Posición X",
+    "PositionY": "Posición Y"
 }

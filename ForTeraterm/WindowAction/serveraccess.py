@@ -220,8 +220,8 @@ class ServerAccess(customtkinter.CTkFrame):
         server_info = sfm.get_serverdata(i)
         info_text = ""
         for key in server_info.__dict__.items():
-            info_text += key[0] + ":    "
             if key[0]:
+                info_text += key[0] + ":    "
                 if key[0] in ["psw","psw2"]:
                     info_text += "*" *len(str(key[1])) + "\n"
                 else:

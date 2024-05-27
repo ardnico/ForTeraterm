@@ -73,5 +73,7 @@
     "SecondServer": "제2 서버",
     "WindowTitleName": "창 제목 이름",
     "WindowShowHide": "창 표시/숨기기",
-    "AutoWindowClose": "자동 창 닫기"
+    "AutoWindowClose": "자동 창 닫기",
+    "PositionX": "위치 X",
+    "PositionY": "위치 Y"
 }

@@ -78,5 +78,7 @@
     "Show": "表示",
     "Hide": "非表示",
     "DoNotClose": "閉じない",
-    "Close": "閉じる"
+    "Close": "閉じる",
+    "PositionX": "位置 X",
+    "PositionY": "位置 Y"
 }
