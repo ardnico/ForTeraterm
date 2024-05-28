@@ -60,7 +60,7 @@
     "TeratermIniPath": "Путь к файлу Teraterm INI",
     "Theme": "Тема",
     "LogLevel": "Уровень журнала",
-    "CreateTTLFile": "Пожалуйста, создайте файл TTL. Обратитесь к справке Teraterm для инструкций по его созданию.",
+    "CreateTTLFile": ";Пожалуйста, создайте файл TTL. Обратитесь к справке Teraterm для инструкций по его созданию.",
     "MacroName": "Имя макроса",
     "PublicKey": "Публичный ключ",
     "FileTransferFolder": "Папка для передачи файлов",
@@ -75,5 +75,7 @@
     "WindowShowHide": "Показать/скрыть окно",
     "AutoWindowClose": "Автоматическое закрытие окна",
     "PositionX": "Позиция X",
-    "PositionY": "Позиция Y"
+    "PositionY": "Позиция Y",
+    "SendDelayPerCharacter": "Задержка отправки на символ",
+    "SendDelayPerLine": "Задержка отправки на строку"
 }

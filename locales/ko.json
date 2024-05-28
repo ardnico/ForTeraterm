@@ -60,7 +60,7 @@
     "TeratermIniPath": "Teraterm INI 경로",
     "Theme": "테마",
     "LogLevel": "로그 레벨",
-    "CreateTTLFile": "TTL 파일을 생성해 주세요. 작성 방법은 Teraterm 도움말을 참조해 주세요.",
+    "CreateTTLFile": ";TTL 파일을 생성해 주세요. 작성 방법은 Teraterm 도움말을 참조해 주세요.",
     "MacroName": "매크로 이름",
     "PublicKey": "공개 키",
     "FileTransferFolder": "파일 전송 폴더",
@@ -75,5 +75,8 @@
     "WindowShowHide": "창 표시/숨기기",
     "AutoWindowClose": "자동 창 닫기",
     "PositionX": "위치 X",
-    "PositionY": "위치 Y"
+    "PositionY": "위치 Y",
+    "SendDelayPerCharacter": "문자당 전송 지연 시간",
+    "SendDelayPerLine": "줄당 전송 지연 시간"
+
 }

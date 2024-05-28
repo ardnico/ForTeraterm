@@ -563,7 +563,7 @@ class ServerRegist(customtkinter.CTkFrame):
         self.windowtitle_entry.grid(row=row_i, column=1,padx=padx, pady=pady,sticky='ew')
         
         
-        self.windowhidden_switch_val = tk.StringVar(value="on")
+        self.windowhidden_switch_val = tk.StringVar(value="off")
         self.windowhidden_switch = customtkinter.CTkSwitch(self.Scroll_frame
             ,width=dcrlcell
             ,text_color=theme.font_color1
@@ -597,7 +597,7 @@ class ServerRegist(customtkinter.CTkFrame):
             ,width=dcrlcell
             ,text=self.trans.translate("PositionX")
         )
-        self.windowhidden_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=2)
+        self.windowx_title_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=2)
         
         
         self.windowy_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
@@ -608,9 +608,10 @@ class ServerRegist(customtkinter.CTkFrame):
             ,width=dcrlcell
             ,text=self.trans.translate("PositionY")
         )
-        self.windowhidden_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
+        self.windowy_title_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
         
         row_i += 1
+        
         scr_w,scr_h= pyautogui.size()
         self.sliderval_windowx = tk.IntVar(value=200)
         self.slider_windowx = customtkinter.CTkSlider(self.Scroll_frame
@@ -659,6 +660,80 @@ class ServerRegist(customtkinter.CTkFrame):
         )
         self.windowy_label.grid(row=row_i, column=3, padx=padx, pady=pady,sticky='ew')
         
+        
+        row_i += 1
+        
+        
+        self.cdelayperchar_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
+            ,text_color=theme.font_color1
+            ,fg_color=theme.back1
+            ,corner_radius=1
+            ,font=self.font
+            ,width=dcrlcell
+            ,text=self.trans.translate("SendDelayPerCharacter")
+        )
+        self.cdelayperchar_title_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=2)
+        
+        
+        self.cdelayperline_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
+            ,text_color=theme.font_color1
+            ,fg_color=theme.back1
+            ,corner_radius=1
+            ,font=self.font
+            ,width=dcrlcell
+            ,text=self.trans.translate("SendDelayPerLine")
+        )
+        self.cdelayperline_title_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
+        
+        row_i += 1
+        
+        self.sliderval_cdelayperchar = tk.IntVar(value=5)
+        self.slider_cdelayperchar = customtkinter.CTkSlider(self.Scroll_frame
+            ,from_=0
+            ,to=60
+            ,number_of_steps=60
+            ,width = dcrlcell
+            ,command=self.set_cdelayperchar
+            ,button_color=theme.font_color2
+            ,button_hover_color=theme.high_light
+            ,variable=self.sliderval_cdelayperchar
+        )
+        self.slider_cdelayperchar.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew')
+        
+        self.cdelayperchar_label = customtkinter.CTkLabel(master=self.Scroll_frame
+            ,text_color=theme.font_color1
+            ,fg_color=theme.back1
+            ,corner_radius=1
+            ,font=self.font
+            ,width=dcrlcell
+            ,text=5
+        )
+        self.cdelayperchar_label.grid(row=row_i, column=1, padx=padx, pady=pady,sticky='ew')
+        
+        
+        self.sliderval_cdelayperline = tk.IntVar(value=1)
+        self.slider_cdelayperline = customtkinter.CTkSlider(self.Scroll_frame
+            ,from_=0
+            ,to=60
+            ,number_of_steps=60
+            ,width = dcrlcell
+            ,command=self.set_cdelayperline
+            ,button_color=theme.font_color2
+            ,button_hover_color=theme.high_light
+            ,variable=self.sliderval_cdelayperline
+        )
+        self.slider_cdelayperline.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew')
+        
+        self.cdelayperline_label = customtkinter.CTkLabel(master=self.Scroll_frame
+            ,text_color=theme.font_color1
+            ,fg_color=theme.back1
+            ,corner_radius=1
+            ,font=self.font
+            ,width=dcrlcell
+            ,text=1
+        )
+        self.cdelayperline_label.grid(row=row_i, column=3, padx=padx, pady=pady,sticky='ew')
+        
         row_i += 1
         
         
@@ -674,7 +749,7 @@ class ServerRegist(customtkinter.CTkFrame):
         self.windowx_title_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=2)
         
         
-        self.windowy_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
+        self.cdelayperline_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
             ,text_color=theme.font_color1
             ,fg_color=theme.back1
             ,corner_radius=1
@@ -682,7 +757,7 @@ class ServerRegist(customtkinter.CTkFrame):
             ,width=dcrlcell
             ,text=self.trans.translate("Timeout")
         )
-        self.windowy_title_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
+        self.cdelayperline_title_label.grid(row=row_i, column=2, padx=padx, pady=pady,sticky='ew',columnspan=2)
         
         row_i += 1
         
@@ -902,6 +977,8 @@ class ServerRegist(customtkinter.CTkFrame):
                 ,windowx        =   self.get_value_from_ctk(self.sliderval_windowx )
                 ,windowy        =   self.get_value_from_ctk(self.sliderval_windowy )
                 ,autowinclose   =   self.get_value_from_ctk(self.autowinclose_switch_val,type="switch" )
+                ,cdelayperchar  =   self.get_value_from_ctk(self.sliderval_cdelayperchar )
+                ,cdelayperline  =   self.get_value_from_ctk(self.sliderval_cdelayperline )
             )
             self.sfm.save_serverdata(self.sfm.serverdata)
             self.reset_combobox()
@@ -938,6 +1015,8 @@ class ServerRegist(customtkinter.CTkFrame):
         sdata.windowx        =   self.get_value_from_ctk(self.sliderval_windowx )
         sdata.windowy        =   self.get_value_from_ctk(self.sliderval_windowy )
         sdata.autowinclose   =   self.get_value_from_ctk(self.autowinclose_switch_val,type="switch" )
+        sdata.cdelayperchar  =   self.get_value_from_ctk(self.sliderval_cdelayperchar )
+        sdata.cdelayperline  =   self.get_value_from_ctk(self.sliderval_cdelayperline )
         self.sfm.save_serverdata(sdata)
         self.reset_combobox()
     
@@ -986,6 +1065,9 @@ class ServerRegist(customtkinter.CTkFrame):
         self.replace_entry_combobox( self.sliderval_windowx,sdata.windowx,type="combobox")
         self.replace_entry_combobox( self.sliderval_windowy,sdata.windowy,type="combobox")
         self.replace_entry_combobox( self.autowinclose_switch,sdata.autowinclose,type="switch")
+        self.replace_entry_combobox( self.sliderval_cdelayperchar,sdata.cdelayperchar,type="combobox")
+        self.replace_entry_combobox( self.sliderval_cdelayperline,sdata.cdelayperline,type="combobox")
+        
     
     def set_edit_serverregist_combobox(self,tmp_val):
         self.serverregist_entry.delete(0,"end")
@@ -1054,11 +1136,13 @@ class ServerRegist(customtkinter.CTkFrame):
         self.telnet_combobox.set("ssh")
         self.telnet2_combobox.set("ssh")
         self.sliderval_timeout.set(15)
-        self.windowhidden_switch.select()
+        self.windowhidden_switch.deselect()
         self.windowtitle_entry.delete(0,"end")
         self.sliderval_windowx.set(400)
         self.sliderval_windowy.set(400)
         self.autowinclose_switch.deselect()
+        self.sliderval_cdelayperchar.set(5)
+        self.sliderval_cdelayperline.set(1)
     
     def telnet_switch_event(self):
         if self.telnet_switch_var.get() == "on":
@@ -1104,14 +1188,20 @@ class ServerRegist(customtkinter.CTkFrame):
     def set_windowy(self,tmp_val):
         self.windowy_label.configure(text=tmp_val)
     
+    def set_cdelayperchar(self,tmp_val):
+        self.cdelayperchar_label.configure(text=tmp_val)
+    
+    def set_cdelayperline(self,tmp_val):
+        self.cdelayperline_label.configure(text=tmp_val)
+    
     def set_timeout(self,tmp_val):
         self.timeout_label.configure(text=tmp_val)
     
     def windowhidden_switch_event(self):
         if self.windowhidden_switch_val.get() == "on":
-            tmp_text = self.trans.translate("Show")
-        else:
             tmp_text = self.trans.translate("Hide")
+        else:
+            tmp_text = self.trans.translate("Show")
         self.windowhidden_label.configure(text=tmp_text)
     
     def autowinclose_switch_event(self):

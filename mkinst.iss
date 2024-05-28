@@ -59,6 +59,7 @@ Source: "dist\main\_internal\tcl8\8.4\platform\*"; DestDir: "{app}\_internal\tcl
 Source: "dist\main\_internal\tk\images\*"; DestDir: "{app}\_internal\tk\images"
 Source: "dist\main\_internal\tk\msgs\*"; DestDir: "{app}\_internal\tk\msgs"
 Source: "dist\main\_internal\tk\ttk\*"; DestDir: "{app}\_internal\tk\ttk"
+Source: "dist\main\README.pdf"; DestDir: "{app}\"
 
 [Icons]
 ; Create a shortcut in the Start Menu

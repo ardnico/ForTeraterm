@@ -60,7 +60,7 @@
     "TeratermIniPath": "Teraterm INI路径",
     "Theme": "主题",
     "LogLevel": "日志级别",
-    "CreateTTLFile": "请创建一个TTL文件。有关编写方法，请参考Teraterm帮助。",
+    "CreateTTLFile": ";请创建一个TTL文件。有关编写方法，请参考Teraterm帮助。",
     "MacroName": "宏名称",
     "PublicKey": "公钥",
     "FileTransferFolder": "文件传输文件夹",
@@ -75,5 +75,7 @@
     "WindowShowHide": "窗口显示/隐藏",
     "AutoWindowClose": "自动关闭窗口",
     "PositionX": "位置 X",
-    "PositionY": "位置 Y"
+    "PositionY": "位置 Y",
+    "SendDelayPerCharacter": "每个字符的发送延迟",
+    "SendDelayPerLine": "每行的发送延迟"
 }

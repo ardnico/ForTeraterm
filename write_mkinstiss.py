@@ -35,6 +35,7 @@ for f in files:
     if p.is_dir():
         tmp_path = f.replace("dist\\main","")
         initxt += f'Source: "{f}\\*"; DestDir: "{{app}}{tmp_path}"\n'
+initxt += f'Source: "dist\\main\\README.pdf"; DestDir: "{{app}}\\"\n'
 initxt+=f"""
 [Icons]
 ; Create a shortcut in the Start Menu

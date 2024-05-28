@@ -31,6 +31,8 @@ class ServerDatas:
     windowx             : int   = None
     windowy             : int   = None
     autowinclose        : bool  = False
+    cdelayperchar       : int   = 5
+    cdelayperline       : int   = 1
 
 def server_datas_decoder(data):
     return ServerDatas(**data)

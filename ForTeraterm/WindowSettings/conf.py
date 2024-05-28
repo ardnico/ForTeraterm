@@ -2,7 +2,7 @@ import os
 from .._config import config
 
 __name__ = "ForTeraterm"
-__version__ = "0.1.0"
+__version__ = "1.0.2"
 __license__ = "MIT"
 
 class Conf(config):

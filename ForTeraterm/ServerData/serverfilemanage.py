@@ -45,6 +45,8 @@ class ServerFileManage:
         ,windowx             : int   = None
         ,windowy             : int   = None
         ,autowinclose        : bool  = False
+        ,cdelayperchar       : int   = 5
+        ,cdelayperline       : int   = 1
         ):
         primaryno = self.get_primary_number()
         if primaryno is None:
@@ -77,6 +79,8 @@ class ServerFileManage:
             ,windowx        
             ,windowy        
             ,autowinclose   
+            ,cdelayperchar
+            ,cdelayperline
         )
     
     # @appconf.log_exception
@@ -198,13 +202,13 @@ getdate datestr '%y%m%d'
 connectline=hostname
 
 strmatch 'ssh' sshtelnet
-if result=0 goto setcline1
+if result=1 goto setcline1
 
 strmatch 'telnet' sshtelnet
-if result=0 goto setcline2
+if result=1 goto setcline2
 
 strmatch 'con' sshtelnet
-if result=0 goto setcline3
+if result=1 goto setcline3
 
 
 :setcline1
@@ -241,10 +245,9 @@ goto setcline4
 
 :inputuser0
 wait usernameinput
-:inputuser
 sendln user
 wait pswinput
-if result=0 goto inputuser
+if result=0 goto fail
 sendln psw
 
 goto setcline4
@@ -272,18 +275,24 @@ wait consolesymbol
 strcompare hostname2 ''
 if result=0 goto addprocess
 
-connectline2=telnet2' 'hostname2
+connectline2=telnet2
+strconcat connectline2 ' '
+strconcat connectline2 hostname2
 connect connectline2
 wait usernameinput2
-:inputuser2
 sendln user2
 wait pswinput2
-if result=0 goto inputuser2
+if result=0 goto fail
 sendln psw2
 wait consolesymbol2
 
 goto addprocess
 
+:fail
+titleline='Error'
+failmsg='Please review the sending delay settings etc.'
+
+goto msgbox
 :fail0
 titleline='Value error'
 failmsg='No server was selected'
@@ -329,11 +338,15 @@ messagebox failmsg titleline
         if sdata.windowtitle:
             optionsline.append(f"/W={sdata.windowtitle}")
         if sdata.windowx:
-            optionsline.append(f"/X={sdata.windowx}")
+            optionsline.append(f"/X={str(sdata.windowx)}")
         if sdata.windowy:
-            optionsline.append(f"/Y={sdata.windowy}")
+            optionsline.append(f"/Y={str(sdata.windowy)}")
         if sdata.autowinclose:
             optionsline.append("/AUTOWINCLOSE=on")
+        if sdata.cdelayperchar:
+            optionsline.append(f"/CDELAYPERCHAR={str(sdata.cdelayperchar)}")
+        if sdata.cdelayperline:
+            optionsline.append(f"/CDELAYPERLINE={str(sdata.cdelayperline)}")
         if sdata.optionsline:
             optionsline.append(sdata.optionsline)
         

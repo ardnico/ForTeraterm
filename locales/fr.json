@@ -60,7 +60,7 @@
     "TeratermIniPath": "Chemin du INI de Teraterm",
     "Theme": "Thème",
     "LogLevel": "Niveau de Journalisation",
-    "CreateTTLFile": "Veuillez créer un fichier TTL. Référez-vous à l'aide de Teraterm pour des instructions sur la manière de le rédiger.",
+    "CreateTTLFile": ";Veuillez créer un fichier TTL. Référez-vous à l'aide de Teraterm pour des instructions sur la manière de le rédiger.",
     "MacroName": "Nom du Macro",
     "PublicKey": "Clé Publique",
     "FileTransferFolder": "Dossier de Transfert de Fichiers",
@@ -75,5 +75,7 @@
     "WindowShowHide": "Afficher/Masquer la Fenêtre",
     "AutoWindowClose": "Fermeture Automatique de la Fenêtre",
     "PositionX": "Position X",
-    "PositionY": "Position Y"
+    "PositionY": "Position Y",
+    "SendDelayPerCharacter": "Délai d'Envoi par Caractère",
+    "SendDelayPerLine": "Délai d'Envoi par Ligne"
 }
