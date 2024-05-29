@@ -278,7 +278,7 @@ if result=0 goto addprocess
 connectline2=telnet2
 strconcat connectline2 ' '
 strconcat connectline2 hostname2
-connect connectline2
+sendln connectline2
 wait usernameinput2
 sendln user2
 wait pswinput2
@@ -312,7 +312,12 @@ messagebox failmsg titleline
         """
         with open(tmp_macro_path,"w",encoding="utf-8") as f:
             f.write(tmp_macro_txt)
-        subprocess.Popen([appconf.get_data("TeratermPath"),f"/M={tmp_macro_path}"])
+        launch_server_command = [appconf.get_data("TeratermPath"),f"/M={tmp_macro_path}"]
+        if sdata.cdelayperchar:
+            launch_server_command.append(f"/CDELAYPERCHAR={str(sdata.cdelayperchar)}")
+        if sdata.cdelayperline:
+            launch_server_command.append(f"/CDELAYPERLINE={str(sdata.cdelayperline)}")
+        subprocess.Popen(launch_server_command)
         time.sleep(3)
         os.remove(tmp_macro_path)
     
@@ -343,10 +348,6 @@ messagebox failmsg titleline
             optionsline.append(f"/Y={str(sdata.windowy)}")
         if sdata.autowinclose:
             optionsline.append("/AUTOWINCLOSE=on")
-        if sdata.cdelayperchar:
-            optionsline.append(f"/CDELAYPERCHAR={str(sdata.cdelayperchar)}")
-        if sdata.cdelayperline:
-            optionsline.append(f"/CDELAYPERLINE={str(sdata.cdelayperline)}")
         if sdata.optionsline:
             optionsline.append(sdata.optionsline)
         

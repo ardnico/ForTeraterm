@@ -18,7 +18,7 @@ class Mainmenu(customtkinter.CTk):
         self.apptxt = AppText(appconf.get_data("lang"))
         self.call_mein_menu()
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def call_mein_menu(self):
         width = appconf.get_data("width")
         height = appconf.get_data("height")
@@ -82,22 +82,22 @@ class Mainmenu(customtkinter.CTk):
         self.serveraccess = ServerAccess(self.menuframe)
         self.mainloop()
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def action_serveraccess(self):
         self.reset_frame()
         self.serveraccess = ServerAccess(self.menuframe)
 
-    # @appconf.log_exception
+    @appconf.log_exception
     def action_editmacro(self):
         self.reset_frame()
         self.editmacro = EditMacro(self.menuframe)
 
-    # @appconf.log_exception
+    @appconf.log_exception
     def action_serverregist(self):
         self.reset_frame()
         self.serverregist = ServerRegist(self.menuframe)
 
-    # @appconf.log_exception
+    @appconf.log_exception
     def settings_edit(self):
         self.reset_frame()
         self.edit = Edit(self.menuframe)
@@ -121,13 +121,13 @@ class Mainmenu(customtkinter.CTk):
             pass
         
 
-    # @appconf.log_exception
+    @appconf.log_exception
     def about_readme(self):
         file_path = os.path.join(os.getcwd(),"readme.pdf")
         import webbrowser
         webbrowser.open(file_path)
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def about_version(self):
         version_txt = f"""
 AppName:    {appconf.__name__}
@@ -136,12 +136,12 @@ License:    {appconf.__license__}
 """
         messsagebox.show_info(title="Version Information",message=version_txt)
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def restart(self):
         self.destroy()
         return
         
-    # @appconf.log_exception
+    @appconf.log_exception
     def test(self):
         self.destroy()
         self.__init__()
