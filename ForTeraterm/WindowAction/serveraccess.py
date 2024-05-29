@@ -146,9 +146,12 @@ class ServerAccess(customtkinter.CTkFrame):
                 ,width=30
             ))
             self.checkboxes[i].grid(row=row_i, column=0,padx=padx, pady=pady)
+            tmp_server_name = s.hostname
+            if s.hostname2:
+                tmp_server_name += "-" + s.hostname2
             self.serverlabels.append(customtkinter.CTkLabel(self.Scroll_frame
                 ,width=self.width - padx * 2 - bar_width - padx * 8 - 340
-                ,text=s.hostname
+                ,text=tmp_server_name
                 ,anchor='w'
                 ,font = self.font
                 ,text_color=theme.font_color1

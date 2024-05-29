@@ -737,7 +737,6 @@ class ServerRegist(customtkinter.CTkFrame):
         row_i += 1
         
         
-        
         self.windowx_title_label = customtkinter.CTkLabel(master=self.Scroll_frame
             ,text_color=theme.font_color1
             ,fg_color=theme.back1
@@ -867,37 +866,37 @@ class ServerRegist(customtkinter.CTkFrame):
         
         row_i += 1
         
-        self.teratermini_label = customtkinter.CTkLabel(master=self.Scroll_frame
-            ,text_color=theme.font_color1
-            ,fg_color=theme.back1
-            ,corner_radius=1
-            ,text=self.trans.translate("TeratermIniPath")
-            ,font=self.font
-            ,width=dcrlcell
-        )
-        self.teratermini_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew')
+        # self.teratermini_label = customtkinter.CTkLabel(master=self.Scroll_frame
+        #     ,text_color=theme.font_color1
+        #     ,fg_color=theme.back1
+        #     ,corner_radius=1
+        #     ,text=self.trans.translate("TeratermIniPath")
+        #     ,font=self.font
+        #     ,width=dcrlcell
+        # )
+        # self.teratermini_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew')
         
         
-        self.teratermini_entry = customtkinter.CTkEntry(self.Scroll_frame
-            ,width=dcrlcell
-        )
-        self.teratermini_entry.grid(row=row_i, column=1,padx=padx, pady=pady,sticky='ew',columnspan=2)
-        self.teratermini_entry.delete(0,"end")
-        self.teratermini_entry.insert(0,appconf.get_data("TeratermIniPath"))
-        self.teratermini_button = customtkinter.CTkButton(self.Scroll_frame
-            ,width=cell
-            ,corner_radius = 1
-            ,fg_color = theme.back2
-            ,hover_color = theme.high_light
-            ,text_color = theme.font_color2
-            ,text = self.trans.translate("Open")
-            ,font = self.font
-            ,image = imginst.image_add_file
-            ,command=self.open_teratermini
-        )
-        self.teratermini_button.grid(row=row_i, column=3,padx=padx, pady=pady,sticky='ew')
+        # self.teratermini_entry = customtkinter.CTkEntry(self.Scroll_frame
+        #     ,width=dcrlcell
+        # )
+        # self.teratermini_entry.grid(row=row_i, column=1,padx=padx, pady=pady,sticky='ew',columnspan=2)
+        # self.teratermini_entry.delete(0,"end")
+        # self.teratermini_entry.insert(0,appconf.get_data("TeratermIniPath"))
+        # self.teratermini_button = customtkinter.CTkButton(self.Scroll_frame
+        #     ,width=cell
+        #     ,corner_radius = 1
+        #     ,fg_color = theme.back2
+        #     ,hover_color = theme.high_light
+        #     ,text_color = theme.font_color2
+        #     ,text = self.trans.translate("Open")
+        #     ,font = self.font
+        #     ,image = imginst.image_add_file
+        #     ,command=self.open_teratermini
+        # )
+        # self.teratermini_button.grid(row=row_i, column=3,padx=padx, pady=pady,sticky='ew')
         
-        row_i += 1
+        # row_i += 1
         
         
         self.filetransdir_label = customtkinter.CTkLabel(master=self.Scroll_frame
@@ -964,7 +963,7 @@ class ServerRegist(customtkinter.CTkFrame):
                 ,pswinput2      =   self.get_value_from_ctk(self.pswinput2_entry )
                 ,consolesymbol2 =   self.get_value_from_ctk(self.consolesymbol2_entry )
                 ,optionsline    =   self.get_value_from_ctk(self.optionsline_entry )
-                ,teratermini    =   self.get_value_from_ctk(self.teratermini_entry ,type="filepath")
+                # ,teratermini    =   self.get_value_from_ctk(self.teratermini_entry ,type="filepath")
                 ,filetransdir   =   self.get_value_from_ctk(self.filetransdir_entry ,type="filepath")
                 ,kanjicoder     =   self.get_value_from_ctk(self.kanjicoder_combobox )
                 ,kanjicodet     =   self.get_value_from_ctk(self.kanjicodet_combobox )
@@ -1002,7 +1001,7 @@ class ServerRegist(customtkinter.CTkFrame):
         sdata.pswinput2      =   self.get_value_from_ctk(self.pswinput2_entry )
         sdata.consolesymbol2 =   self.get_value_from_ctk(self.consolesymbol2_entry )
         sdata.optionsline    =   self.get_value_from_ctk(self.optionsline_entry )
-        sdata.teratermini    =   self.get_value_from_ctk(self.teratermini_entry ,type="filepath")
+        # sdata.teratermini    =   self.get_value_from_ctk(self.teratermini_entry ,type="filepath")
         sdata.filetransdir   =   self.get_value_from_ctk(self.filetransdir_entry ,type="filepath")
         sdata.kanjicoder     =   self.get_value_from_ctk(self.kanjicoder_combobox )
         sdata.kanjicodet     =   self.get_value_from_ctk(self.kanjicodet_combobox )
@@ -1052,21 +1051,21 @@ class ServerRegist(customtkinter.CTkFrame):
         self.replace_entry_combobox( self.pswinput2_entry,sdata.pswinput2)
         self.replace_entry_combobox( self.consolesymbol2_entry,sdata.consolesymbol2)
         self.replace_entry_combobox( self.optionsline_entry,sdata.optionsline)
-        self.replace_entry_combobox( self.teratermini_entry,sdata.teratermini)
+        # self.replace_entry_combobox( self.teratermini_entry,sdata.teratermini)
         self.replace_entry_combobox( self.filetransdir_entry,sdata.filetransdir)
         self.replace_entry_combobox( self.kanjicoder_combobox,sdata.kanjicoder,type="combobox")
         self.replace_entry_combobox( self.kanjicodet_combobox,sdata.kanjicodet,type="combobox")
         self.replace_entry_combobox( self.language_combobox,sdata.language,type="combobox")
         self.replace_entry_combobox( self.telnet_combobox,sdata.telnet,type="combobox")
         self.replace_entry_combobox( self.telnet2_combobox,sdata.telnet2,type="combobox")
-        self.replace_entry_combobox( self.sliderval_timeout,sdata.timeout,type="combobox")
+        self.replace_entry_combobox( self.slider_timeout,sdata.timeout,type="combobox")
         self.replace_entry_combobox( self.windowhidden_switch,sdata.windowhidden,type="switch")
         self.replace_entry_combobox( self.windowtitle_entry,sdata.windowtitle)
-        self.replace_entry_combobox( self.sliderval_windowx,sdata.windowx,type="combobox")
-        self.replace_entry_combobox( self.sliderval_windowy,sdata.windowy,type="combobox")
+        self.replace_entry_combobox( self.slider_windowx,sdata.windowx,type="combobox")
+        self.replace_entry_combobox( self.slider_windowy,sdata.windowy,type="combobox")
         self.replace_entry_combobox( self.autowinclose_switch,sdata.autowinclose,type="switch")
-        self.replace_entry_combobox( self.sliderval_cdelayperchar,sdata.cdelayperchar,type="combobox")
-        self.replace_entry_combobox( self.sliderval_cdelayperline,sdata.cdelayperline,type="combobox")
+        self.replace_entry_combobox( self.slider_cdelayperchar,sdata.cdelayperchar,type="combobox")
+        self.replace_entry_combobox( self.slider_cdelayperline,sdata.cdelayperline,type="combobox")
         
     
     def set_edit_serverregist_combobox(self,tmp_val):
@@ -1128,27 +1127,27 @@ class ServerRegist(customtkinter.CTkFrame):
         self.consolesymbol2_entry.delete(0,"end")
         self.consolesymbol2_entry.insert(0,"$")
         self.optionsline_entry.delete(0,"end")
-        self.teratermini_entry.delete(0,"end")
+        # self.teratermini_entry.delete(0,"end")
         self.filetransdir_entry.delete(0,"end")
         self.kanjicoder_combobox.set("")
         self.kanjicodet_combobox.set("")
         self.language_combobox.set("U")
         self.telnet_combobox.set("ssh")
         self.telnet2_combobox.set("ssh")
-        self.sliderval_timeout.set(15)
+        self.slider_timeout.set(15)
         self.windowhidden_switch.deselect()
         self.windowtitle_entry.delete(0,"end")
-        self.sliderval_windowx.set(400)
-        self.sliderval_windowy.set(400)
+        self.slider_windowx.set(200)
+        self.slider_windowy.set(200)
         self.autowinclose_switch.deselect()
-        self.sliderval_cdelayperchar.set(5)
-        self.sliderval_cdelayperline.set(1)
+        self.slider_cdelayperchar.set(5)
+        self.slider_cdelayperline.set(1)
     
-    def telnet_switch_event(self):
-        if self.telnet_switch_var.get() == "on":
-            self.telnet_switch_label.configure(text="SSH")
-        else:
-            self.telnet_switch_label.configure(text="Telnet")
+    # def telnet_switch_event(self):
+    #     if self.telnet_switch_var.get() == "on":
+    #         self.telnet_switch_label.configure(text="SSH")
+    #     else:
+    #         self.telnet_switch_label.configure(text="Telnet")
         
     def set_auth_combobox(self,tmp_val):
         if tmp_val == "passwd":
@@ -1156,13 +1155,13 @@ class ServerRegist(customtkinter.CTkFrame):
         elif tmp_val == "publickey":
             self.passwd_label.configure(text=self.trans.translate("PublicKey"))
     
-    def open_teratermini(self):
-        initialdir = os.path.dirname(self.teratermini_entry.get())
-        filetypes = [('ini file','*.ini')]
-        file_path = self.open_file_dialog(filetypes,initialdir)
-        if file_path:
-            self.teratermini_entry.delete(0,"end")
-            self.teratermini_entry.insert(0,file_path)
+    # def open_teratermini(self):
+    #     initialdir = os.path.dirname(self.teratermini_entry.get())
+    #     filetypes = [('ini file','*.ini')]
+    #     file_path = self.open_file_dialog(filetypes,initialdir)
+    #     if file_path:
+    #         self.teratermini_entry.delete(0,"end")
+    #         self.teratermini_entry.insert(0,file_path)
     
     def set_language_combobox(self,tmp_val):
         language_dic = {

@@ -16,7 +16,7 @@ class ServerFileManage:
         os.makedirs(self.datadir,exist_ok=True)
         appconf.set_log()
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def set_serverdata(
         self
         ,hostname            : str   = None
@@ -83,7 +83,7 @@ class ServerFileManage:
             ,cdelayperline
         )
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def get_primary_number(self):
         files = glob(os.path.join(self.datadir, "[0-9]" * 5 + ".json"))
         if len(files) == 0:
@@ -94,12 +94,12 @@ class ServerFileManage:
                 return i
         return None
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def get_json(self,sdata: ServerDatas):
         enc = MyEncoder()
         return enc.default(sdata)
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def get_serverdata(self, primary_number):
         filename = os.path.join(self.datadir, f"{str(primary_number).zfill(5)}.json")
         if not os.path.exists(filename):
@@ -117,14 +117,14 @@ class ServerFileManage:
             tmp_serverdata.psw2 = appconf.enc.decrypt(tmp_serverdata.psw2)
         return tmp_serverdata
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def delete_serverdata(self,primaryno):
         primaryno = str(primaryno)
         filename = os.path.join(self.datadir, f"{primaryno.zfill(5)}.json")
         if os.path.exists(filename)==True:
             os.remove(filename)
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def save_serverdata(self,sdata: ServerDatas):
         if sdata.user:
             sdata.user = appconf.enc.encrypt(sdata.user)
@@ -139,7 +139,7 @@ class ServerFileManage:
             d = self.get_json(sdata)
             json.dump(d, f, indent=2)
     
-    # @appconf.log_exception
+    @appconf.log_exception
     def get_serverdatas(self):
         ret = []
         files = glob(os.path.join(self.datadir, "[0-9]" * 5 + ".json"))
@@ -317,6 +317,7 @@ messagebox failmsg titleline
             launch_server_command.append(f"/CDELAYPERCHAR={str(sdata.cdelayperchar)}")
         if sdata.cdelayperline:
             launch_server_command.append(f"/CDELAYPERLINE={str(sdata.cdelayperline)}")
+        launch_server_command += optionsline
         subprocess.Popen(launch_server_command)
         time.sleep(3)
         os.remove(tmp_macro_path)
@@ -328,8 +329,8 @@ messagebox failmsg titleline
     
     def access_server(self,sdata:ServerDatas,macro_path):
         optionsline = []
-        if sdata.teratermini:
-            optionsline.append(f'/F="{sdata.teratermini}"')
+        # if sdata.teratermini:
+        #     optionsline.append(f'/F="{sdata.teratermini}"')
         if sdata.filetransdir:
             optionsline.append(f'/FD="{sdata.filetransdir}"')
         if sdata.kanjicoder:
@@ -351,7 +352,6 @@ messagebox failmsg titleline
         if sdata.optionsline:
             optionsline.append(sdata.optionsline)
         
-        optionsline = " ".join(optionsline)
         self.tmp_macro_exec(sdata,optionsline,macro_path)
         
     def mk_ttl(self,title,commandline):
