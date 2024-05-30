@@ -2,7 +2,7 @@
 import os
 import customtkinter
 from glob import glob
-from ..WindowSettings.theme import theme
+from ..WindowSettings.theme import *
 from ..WindowSettings.conf import appconf
 from ..WindowSettings.image import imginst
 from ..Language.apptext import AppText
@@ -48,18 +48,12 @@ class EditMacro(customtkinter.CTkFrame):
         row_i = 0
         label = self.trans.translate("EditMacro")
         
-        self.title_label = customtkinter.CTkLabel(self
+        self.title_label = ThemeCTKLabel_2b(self
             ,text=label
             ,width = self.width - 10
             ,height = 25
-            ,corner_radius = 10
             ,bg_color = "transparent"
-            ,fg_color = theme.back2
-            ,text_color = theme.font_color2
-            ,font = self.font_b
             ,image = imginst.image_server
-            ,compound = "left"
-            ,anchor = "center"
             ,wraplength = 0
             )
         self.title_label.grid(row=row_i, column=0, padx=padx, pady=pady,sticky='ew',columnspan=3)
