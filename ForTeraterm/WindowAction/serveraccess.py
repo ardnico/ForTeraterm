@@ -180,7 +180,7 @@ class ServerAccess(customtkinter.CTkFrame):
         row_i += 1
         self.item_icons_frame = customtkinter.CTkLabel(self
             , width             = self.width
-            , fg_color          = theme.back1
+            , fg_color          = theme.back2
             ,text=self.trans.translate("DetailedInfo")
             ,anchor="center"
             ,corner_radius=0

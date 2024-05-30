@@ -167,7 +167,6 @@ pswinput='{self.val_none_check(sdata.pswinput)}'
 consolesymbol='{self.val_none_check(sdata.consolesymbol)}'
 
 sshtelnet='{self.val_none_check(sdata.telnet)}'
-connectoptionline='{optionsline}'
 
 hostname2='{self.val_none_check(sdata.hostname2)}'
 user2='{self.val_none_check(sdata.user2)}'
@@ -236,7 +235,6 @@ strconcat connectline psw
 strconcat connectline ' /L='
 strconcat connectline logfile
 strconcat connectline ' '
-strconcat connectline connectoptionline
 timeout=3
 connect connectline
 if result<>2 goto fail1
@@ -265,7 +263,6 @@ strconcat connectline dateline
 strconcat connectline 'COM'
 strconcat connectline sshtelnet
 strconcat connectline '.log '
-strconcat connectline connectoptionline
 
 connect connectline
 
