@@ -4,12 +4,13 @@ This project provides a Python script to launch Tera Term with specified paramet
 
 # Version
 
-1.0.2
+1.0.3
 
-| version | content     | detail |
-| ------- | ----------- | ------ |
-| 1.0.0   | New release |        |
-| 1.0.2   | Minor corrections |        |
+| version | content                                      | detail |
+| ------- | -------------------------------------------- | ------ |
+| 1.0.0   | New release                                  |        |
+| 1.0.2   | Minor corrections                            |        |
+| 1.0.3   | Corrected behavior during screen transitions |        |
 
 ## Features
 
