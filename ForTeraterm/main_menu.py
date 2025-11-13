@@ -1,152 +1,211 @@
+"""Main application window for the ForTeraterm toolkit."""
 
-import os
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Callable, List, Optional, Sequence, Tuple
+import webbrowser
+
 import customtkinter
-from .CTkMenuBar import *
-from .util import messsagebox
 from tkinter import filedialog
-from .WindowAction.serveraccess import ServerAccess
-from .WindowAction.editmacro import EditMacro
-from .WindowAction.serverregist import ServerRegist
-from .WindowSettings.edit import Edit
-from .WindowSettings.theme import *
-from .WindowSettings.conf import appconf
+
+from .CTkMenuBar import CTkMenuBar, CustomDropdownMenu
 from .Language.apptext import AppText
+from .WindowAction.editmacro import EditMacro
+from .WindowAction.serveraccess import ServerAccess
+from .WindowAction.serverregist import ServerRegist
+from .WindowSettings.conf import appconf
+from .WindowSettings.edit import Edit
+from .WindowSettings.theme import ThemeFrame1, ThemeManager
+from .util import messsagebox
+
+FrameFactory = Callable[[customtkinter.CTkFrame], customtkinter.CTkFrame]
+
 
 class Mainmenu(customtkinter.CTk):
-    def __init__(self, **kwargs):
+    """Main application window.
+
+    The original implementation mixed window construction and main-loop
+    management.  This refactored version separates responsibilities to make the
+    class easier to reason about and extend.
+    """
+
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.apptxt = AppText(appconf.get_data("lang"))
-        self.call_mein_menu()
-    
-    @appconf.log_exception
-    def call_mein_menu(self):
+        self._theme = ThemeManager()
+        self._content_frame: ThemeFrame1 | None = None
+        self._sub_frames: List[customtkinter.CTkFrame] = []
+
+        self._configure_window()
+        self._build_menu_bar()
+        self._build_content_frame()
+
+        # Show the default view.
+        self.action_serveraccess()
+
+    def run(self) -> None:
+        """Start the Tk main loop."""
+
+        self.mainloop()
+
+    def _configure_window(self) -> None:
+        """Configure geometry, title and theme information."""
+
         width = appconf.get_data("width")
         height = appconf.get_data("height")
         self.geometry(f"{width}x{height}")
         self.title(self.apptxt.translate("TeratermAccessTool"))
-        theme = ThemeManager()
-        customtkinter.set_appearance_mode(theme.mode)
-        font = theme.setfont
-        
-        menu = CTkMenuBar(self)
-        self.button_1 = menu.add_cascade(self.apptxt.translate("Action"))
-        self.button_2 = menu.add_cascade(self.apptxt.translate("Settings"))
-        self.button_3 = menu.add_cascade(self.apptxt.translate("About"))
-        
-        self.dropdown1 = CustomDropdownMenu(
-            widget          = self.button_1,
-            border_color    = theme.back2,
-            font            = font,
-            bg_color        = "transparent",
-            hover_color     = [theme.back1, theme.highlight],
-            # fg_color        = [theme.back2,theme.back1],
-            # text_color      = [ theme.font_color2 , theme.font_color1],
-            )
-        self.dropdown1.add_option(option=self.apptxt.translate("ServerAccess"),command=self.action_serveraccess)
-        self.dropdown1.add_option(option=self.apptxt.translate("EditMacro"),command=self.action_editmacro)
-        self.dropdown1.add_option(option=self.apptxt.translate("ServerRegist"),command=self.action_serverregist)
-        
-        self.dropdown2 = CustomDropdownMenu(
-            widget=self.button_2,
-            border_color    = theme.back2,
-            font            = font,
-            bg_color        = "transparent",
-            hover_color     = [theme.back1, theme.highlight],
-            # fg_color        = [theme.back2,theme.back1],
-            # text_color      = [ theme.font_color2 , theme.font_color1],
-            )
-        self.dropdown2.add_option(option=self.apptxt.translate("Edit"),command=self.settings_edit)
-        # self.dropdown2.add_option(option=self.apptxt.translate("Restart"),command=self.restart)
-        
-        self.dropdown3 = CustomDropdownMenu(
-            widget=self.button_3,
-            border_color    = theme.back2,
-            font            = font,
-            bg_color        = "transparent",
-            hover_color     = [theme.back1, theme.highlight],
-            # fg_color        = [theme.back2,theme.back1],
-            # text_color      = [ theme.font_color2 , theme.font_color1],
-            )
-        self.dropdown3.add_option(option=self.apptxt.translate("Readme"),command=self.about_readme)
-        self.dropdown3.add_option(option=self.apptxt.translate("Version"),command=self.about_version)
-        # self.dropdown3.add_option(option=self.apptxt.translate("Restart"),command=self.restart)
+
+        customtkinter.set_appearance_mode(self._theme.mode)
+
+    def _build_menu_bar(self) -> None:
+        """Construct the top-level menu bar and configure dropdowns."""
+
+        menu_bar = CTkMenuBar(self)
+
+        action_button = menu_bar.add_cascade(self.apptxt.translate("Action"))
+        settings_button = menu_bar.add_cascade(self.apptxt.translate("Settings"))
+        about_button = menu_bar.add_cascade(self.apptxt.translate("About"))
+
+        self._create_dropdown(
+            action_button,
+            (
+                ("ServerAccess", self.action_serveraccess),
+                ("EditMacro", self.action_editmacro),
+                ("ServerRegist", self.action_serverregist),
+            ),
+        )
+
+        self._create_dropdown(
+            settings_button,
+            (
+                ("Edit", self.settings_edit),
+            ),
+        )
+
+        about_options: Tuple[tuple[str, Callable[[], None]], ...] = (
+            ("Readme", self.about_readme),
+            ("Version", self.about_version),
+        )
+
         if appconf.get_data("dev_mode") == 1:
-            self.dropdown3.add_option(option=self.apptxt.translate("Test"),command=self.test)
-        
-        self.menuframe = ThemeFrame1(
+            about_options += (("Test", self.test),)
+
+        self._create_dropdown(about_button, about_options)
+
+    def _build_content_frame(self) -> None:
+        """Create the frame that hosts the different feature panels."""
+
+        width = appconf.get_data("width")
+        height = appconf.get_data("height")
+        self._content_frame = ThemeFrame1(
             master=self,
-            fg_color = theme.back1,
-            width = appconf.get_data("width"),
-            height = appconf.get_data("height"),
+            fg_color=self._theme.back1,
+            width=width,
+            height=height,
+        )
+        self._content_frame.pack(fill="both", expand=True)
+
+    def _create_dropdown(
+        self,
+        widget: customtkinter.CTkButton,
+        options: Sequence[tuple[str, Callable[[], None]]],
+    ) -> CustomDropdownMenu:
+        """Create a drop-down menu attached to *widget* with translated labels."""
+
+        dropdown = CustomDropdownMenu(
+            widget=widget,
+            border_color=self._theme.back2,
+            font=self._theme.setfont,
+            bg_color="transparent",
+            hover_color=[self._theme.back1, self._theme.highlight],
+        )
+
+        for label_key, command in options:
+            dropdown.add_option(
+                option=self.apptxt.translate(label_key),
+                command=command,
             )
-        self.menuframe.pack(fill="both")
-        
-        self.serveraccess = ServerAccess(self.menuframe)
-        self.sub_frames = []
-        self.mainloop()
-    
-    @appconf.log_exception
-    def action_serveraccess(self):
+
+        return dropdown
+
+    def _show_frame(self, factory: FrameFactory) -> None:
+        """Display a new frame returned by *factory* in the content area."""
+
+        if self._content_frame is None:
+            raise RuntimeError("Content frame has not been initialised.")
+
         self.reset_frame()
-        self.serveraccess = ServerAccess(self.menuframe)
-        self.sub_frames.append(self.serveraccess)
+        frame = factory(self._content_frame)
+        self._sub_frames.append(frame)
 
     @appconf.log_exception
-    def action_editmacro(self):
-        self.reset_frame()
-        self.editmacro = EditMacro(self.menuframe)
-        
-        self.sub_frames.append(self.editmacro)
+    def action_serveraccess(self) -> None:
+        self._show_frame(ServerAccess)
 
     @appconf.log_exception
-    def action_serverregist(self):
-        self.reset_frame()
-        self.serverregist = ServerRegist(self.menuframe)
-        self.sub_frames.append(self.serverregist)
+    def action_editmacro(self) -> None:
+        self._show_frame(EditMacro)
 
     @appconf.log_exception
-    def settings_edit(self):
-        self.reset_frame()
-        self.edit = Edit(self.menuframe)
-        self.sub_frames.append(self.edit)
+    def action_serverregist(self) -> None:
+        self._show_frame(ServerRegist)
 
-    def reset_frame(self):
-        for frame in self.sub_frames:
-            frame.grid_forget()
-        
     @appconf.log_exception
-    def about_readme(self):
-        file_path = os.path.join(os.getcwd(),"readme.pdf")
-        import webbrowser
-        webbrowser.open(file_path)
-    
+    def settings_edit(self) -> None:
+        self._show_frame(Edit)
+
+    def reset_frame(self) -> None:
+        """Clear existing frames from the content area."""
+
+        for frame in self._sub_frames:
+            frame.destroy()
+        self._sub_frames.clear()
+
     @appconf.log_exception
-    def about_version(self):
-        version_txt = f"""
-AppName:    {appconf.__name__}
-Version:    {appconf.__version__}
-License:    {appconf.__license__}
-"""
-        messsagebox.show_info(title="Version Information",message=version_txt)
-    
+    def about_readme(self) -> None:
+        readme_path = Path(__file__).resolve().parent.parent / "README.pdf"
+        if readme_path.exists():
+            webbrowser.open(readme_path.as_uri())
+        else:
+            messsagebox.show_warning(
+                title="Missing documentation",
+                message=f"README file not found at {readme_path}",
+            )
+
     @appconf.log_exception
-    def restart(self):
+    def about_version(self) -> None:
+        version_txt = (
+            f"AppName:    {appconf.__name__}\n"
+            f"Version:    {appconf.__version__}\n"
+            f"License:    {appconf.__license__}"
+        )
+        messsagebox.show_info(
+            title="Version Information",
+            message=version_txt,
+        )
+
+    @appconf.log_exception
+    def restart(self) -> None:
         self.destroy()
-        return
-        
+
     @appconf.log_exception
-    def test(self):
-        self.destroy()
-        self.__init__()
-    
+    def test(self) -> None:
+        messsagebox.show_info(
+            title="Development Mode",
+            message="Test action is not implemented.",
+        )
+
     @staticmethod
-    def open_file_dialog(filetypes,initialdir):
-        # Open a file dialog and get the selected file path
-        # [('data files','*.csv;*.txt')]
-        file_path = filedialog.askopenfilename(filetypes=filetypes,initialdir=initialdir)
-        if file_path:
-            return file_path
-    
-    def restart(self):
-        self.destroy()
-        Mainmenu()
+    def open_file_dialog(
+        filetypes: Sequence[tuple[str, str]] | None,
+        initialdir: str | Path | None,
+    ) -> Optional[str]:
+        """Open a file selection dialog and return the chosen file path."""
+
+        file_path = filedialog.askopenfilename(
+            filetypes=filetypes,
+            initialdir=initialdir,
+        )
+        return file_path or None
