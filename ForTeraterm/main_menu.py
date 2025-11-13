@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from pathlib import Path
+from typing import Callable, List, Optional, Sequence, Tuple
 import webbrowser
 
 import customtkinter
@@ -17,8 +18,8 @@ from .WindowSettings.conf import appconf
 from .WindowSettings.edit import Edit
 from .WindowSettings.theme import ThemeFrame1, ThemeManager
 from .util import messsagebox
-from .util.appinfo import format_version_text, locate_documentation
-from .view_manager import FrameFactory, ViewManager
+
+FrameFactory = Callable[[customtkinter.CTkFrame], customtkinter.CTkFrame]
 
 
 class Mainmenu(customtkinter.CTk):
@@ -34,9 +35,7 @@ class Mainmenu(customtkinter.CTk):
         self.apptxt = AppText(appconf.get_data("lang"))
         self._theme = ThemeManager()
         self._content_frame: ThemeFrame1 | None = None
-        self._view_manager: ViewManager[
-            customtkinter.CTkFrame, customtkinter.CTkFrame
-        ] = ViewManager()
+        self._sub_frames: List[customtkinter.CTkFrame] = []
 
         self._configure_window()
         self._build_menu_bar()
@@ -107,7 +106,6 @@ class Mainmenu(customtkinter.CTk):
             height=height,
         )
         self._content_frame.pack(fill="both", expand=True)
-        self._view_manager.set_parent(self._content_frame)
 
     def _create_dropdown(
         self,
@@ -139,7 +137,8 @@ class Mainmenu(customtkinter.CTk):
             raise RuntimeError("Content frame has not been initialised.")
 
         self.reset_frame()
-        self._view_manager.show(factory)
+        frame = factory(self._content_frame)
+        self._sub_frames.append(frame)
 
     @appconf.log_exception
     def action_serveraccess(self) -> None:
@@ -160,22 +159,28 @@ class Mainmenu(customtkinter.CTk):
     def reset_frame(self) -> None:
         """Clear existing frames from the content area."""
 
-        self._view_manager.reset()
+        for frame in self._sub_frames:
+            frame.destroy()
+        self._sub_frames.clear()
 
     @appconf.log_exception
     def about_readme(self) -> None:
-        readme_path = locate_documentation()
-        if readme_path is not None:
+        readme_path = Path(__file__).resolve().parent.parent / "README.pdf"
+        if readme_path.exists():
             webbrowser.open(readme_path.as_uri())
         else:
             messsagebox.show_warning(
                 title="Missing documentation",
-                message="README file not found in the application directory.",
+                message=f"README file not found at {readme_path}",
             )
 
     @appconf.log_exception
     def about_version(self) -> None:
-        version_txt = format_version_text(appconf)
+        version_txt = (
+            f"AppName:    {appconf.__name__}\n"
+            f"Version:    {appconf.__version__}\n"
+            f"License:    {appconf.__license__}"
+        )
         messsagebox.show_info(
             title="Version Information",
             message=version_txt,
