@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
+from os import fspath
 import webbrowser
 
 import customtkinter
@@ -202,8 +203,22 @@ class Mainmenu(customtkinter.CTk):
         filetypes: Sequence[tuple[str, str]] | None,
         initialdir: str | Path | None,
     ) -> Optional[str]:
-        """Open a file selection dialog and return the chosen file path."""
+        """Open a file selection dialog.
 
+        Args:
+            filetypes: File type filters passed directly to
+                :func:`tkinter.filedialog.askopenfilename`.
+            initialdir: Starting directory for the dialog.  Accepts ``str`` or
+                :class:`pathlib.Path` objects as well as ``None``; any
+                :class:`pathlib.Path` values are converted to strings before
+                invoking the dialog.
+
+        Returns:
+            The selected file path or ``None`` if the dialog is cancelled.
+        """
+
+        if initialdir is not None:
+            initialdir = fspath(initialdir)
         file_path = filedialog.askopenfilename(
             filetypes=filetypes,
             initialdir=initialdir,

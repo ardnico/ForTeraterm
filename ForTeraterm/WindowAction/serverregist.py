@@ -968,10 +968,17 @@ class ServerRegist(ThemeFrame1):
     
     @staticmethod
     def open_file_dialog(filetypes,initialdir):
-        # Open a file dialog and get the selected file path
-        # [('data files','*.csv;*.txt')]
+        """Open a file dialog and get the selected file path.
+
+        Accepts ``str``, :class:`pathlib.Path`, or ``None`` for ``initialdir``.
+        Any :class:`pathlib.Path` value is converted to ``str`` before the
+        underlying dialog is invoked so callers do not need to perform the
+        conversion themselves.
+        """
+
+        if initialdir is not None:
+            initialdir = os.fspath(initialdir)
         file_path = filedialog.askopenfilename(filetypes=filetypes,initialdir=initialdir)
         if file_path:
             return file_path
         return None
-    
