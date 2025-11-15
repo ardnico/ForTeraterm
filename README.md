@@ -1,87 +1,93 @@
 # ForTeraterm
 
-This project provides a Python script to launch Tera Term with specified parameters. Tera Term is a terminal emulator software that supports serial port, SSH, and telnet connections.
+ForTeraterm is a desktop companion for [Tera Term](https://ttssh2.osdn.jp/index.html.en) built with [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter). It centralises server definitions, macros, and Tera Term launch options so teams can share a consistent workflow for daily operations.
 
-# Version
+The application ships with a Windows installer (PyInstaller + Inno Setup) and can also be run directly from source on any platform supported by Python and CustomTkinter.
 
-1.0.3
-
-| version | content                                      | detail |
-| ------- | -------------------------------------------- | ------ |
-| 1.0.0   | New release                                  |        |
-| 1.0.2   | Minor corrections                            |        |
-| 1.0.3   | Corrected behavior during screen transitions |        |
+## Table of contents
+- [Features](#features)
+- [Project layout](#project-layout)
+- [Getting started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Create a virtual environment](#create-a-virtual-environment)
+  - [Install dependencies](#install-dependencies)
+- [Running the application](#running-the-application)
+- [Managing data](#managing-data)
+- [Testing](#testing)
+- [Packaging for Windows](#packaging-for-windows)
+- [License](#license)
 
 ## Features
+- **Server registry** – capture SSH, Telnet, or serial connection details and share them via JSON files stored under `ForTeraterm/ServerData`. 【F:ForTeraterm/ServerData/serverfilemanage.py†L1-L106】
+- **Macro editor** – edit and associate Tera Term macro files so that complex logins can be replayed automatically. 【F:ForTeraterm/WindowAction/editmacro.py†L1-L204】
+- **Batch launcher** – start multiple servers at once, optionally running macros, from the main dashboard. 【F:ForTeraterm/WindowAction/serveraccess.py†L1-L225】
+- **Theme and layout controls** – adjust window size, colours, and fonts using the built-in settings panes. 【F:ForTeraterm/WindowSettings/theme.py†L1-L118】【F:ForTeraterm/WindowSettings/edit.py†L1-L214】
+- **Localisation support** – switch UI text by toggling the language configuration file. 【F:ForTeraterm/Language/apptext.py†L1-L116】
 
-- Launch Tera Term from a Python script
-- Specify connection parameters such as host or serial port
+## Project layout
+```
+ForTeraterm/
+├── ForTeraterm/            # Application package
+│   ├── WindowAction/       # Frames for registry, macro editor, and launcher
+│   ├── WindowSettings/     # Theme manager, configuration editors, image helpers
+│   ├── Language/           # Localised UI strings
+│   ├── ServerData/         # JSON persistence helpers
+│   └── view_manager.py     # Utility for swapping frames inside the main window
+├── img/, icons/, locales/  # Static assets bundled with the installer
+├── main.py                 # CLI entry point for launching the UI
+├── mkinst.iss              # Inno Setup script used when packaging for Windows
+├── tests/                  # Pytest test suite covering UI helpers and managers
+└── write_mkinstiss.py      # Generates the Inno Setup script from build output
+```
 
-## Prerequisites
+## Getting started
+### Prerequisites
+- Python 3.11 or newer
+- Tera Term installed locally (required once you start launching sessions)
+- Windows users should install the Tera Term 64-bit binaries; macOS/Linux users can run the launcher but will need a remote Windows host for Tera Term itself.
 
-- Tera Term installed on your system
+### Create a virtual environment
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+```
 
-## Usage
+### Install dependencies
+Runtime dependencies are listed in `requirements.txt`. For development, including the test suite, install the `requirements-dev.txt` bundle.
 
-- register servers
+```bash
+pip install --upgrade pip
+pip install -r requirements-dev.txt
+```
 
-1. Select the [Action] > [ServerRegist]
+## Running the application
+After activating the virtual environment and installing dependencies, launch the CustomTkinter UI with:
 
-2. Enter/select server name
+```bash
+python main.py
+```
 
-![HostnameMenu](./pdfimg/01.png)
+The main window opens on the **Server Access** view. Use the **Action** menu to register servers or edit macros. All window state (size, theme, language) is saved through the configuration helpers under `ForTeraterm/WindowSettings` for the next session. 【F:ForTeraterm/main_menu.py†L1-L152】
 
-3. Enter the required information or make a selection
+## Managing data
+Server entries and macro metadata are stored as JSON files in `ForTeraterm/ServerData`. You can back up or share these files between team members. Encryption helpers are provided so sensitive fields can be obfuscated before distribution. 【F:ForTeraterm/_config/encrypter.py†L1-L95】
 
-![InputMenu](./pdfimg/02.png)
+## Testing
+The project uses [pytest](https://docs.pytest.org/) to exercise non-graphical logic such as frame switching, file management, and dialog helpers. To run the suite:
 
-4. "Register" for new registration, "Save" for editing
-To delete settings, click "Delete"
+```bash
+pytest
+```
 
-![HostnameMenu](./pdfimg/01.png)
+Tests rely on the mock objects defined in `tests/conftest.py` to simulate CustomTkinter and Pillow in headless environments. 【F:tests/conftest.py†L1-L88】
 
-- register maros
+## Packaging for Windows
+The CI workflow demonstrates how to build a distributable installer:
+1. Create the PyInstaller bundle using `main.spec`.
+2. Run `write_mkinstiss.py` to generate the Inno Setup script for the fresh build.
+3. Compile the installer with Inno Setup's `ISCC.exe`.
 
-1. Select the [Action] > [EditMacro]
+The generated installer places assets from `img/`, `locales/`, and `icons/` alongside the executable. Refer to `.github/workflows` in your fork or the `build.bat` script for a local build. 【F:write_mkinstiss.py†L1-L196】
 
-2. Enter/select server name
-
-![EditMacro](./pdfimg/03.png)
-
-3. Edit macro
-
-![EditMacro](./pdfimg/04.png)
-
-- launch servers
-
-1. For individual access, click the "ServerAccess" button
-
-![EditMacro](./pdfimg/05.png)
-
-2. Click on the icon below to check detailed information
-
-![EditMacro](./pdfimg/06.png)
-
-3. If you want to start multiple, select the checkbox first.
-
-![EditMacro](./pdfimg/07.png)
-
-4. If you also want to run a macro, check "Run Macro" and select the macro to run.
-
-![EditMacro](./pdfimg/08.png)
-
-5. Click "Batch Server Access" to start the servers in order from the top.
-
-![EditMacro](./pdfimg/09.png)
-
-# License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
-# Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-# Acknowledgements
-
-Tera Term - Terminal emulator software
+## License
+This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for details.
