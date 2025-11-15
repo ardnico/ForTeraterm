@@ -36,7 +36,7 @@ class Mainmenu(customtkinter.CTk):
         self.apptxt = AppText(appconf.get_data("lang"))
         self._theme = ThemeManager()
         self._content_frame: ThemeFrame1 | None = None
-        self._sub_frames: List[customtkinter.CTkFrame] = []
+        self._current_frame: customtkinter.CTkFrame | None = None
 
         self._configure_window()
         self._build_menu_bar()
@@ -139,7 +139,7 @@ class Mainmenu(customtkinter.CTk):
 
         self.reset_frame()
         frame = factory(self._content_frame)
-        self._sub_frames.append(frame)
+        self._current_frame = frame
 
     @appconf.log_exception
     def action_serveraccess(self) -> None:
@@ -160,9 +160,9 @@ class Mainmenu(customtkinter.CTk):
     def reset_frame(self) -> None:
         """Clear existing frames from the content area."""
 
-        for frame in self._sub_frames:
-            frame.destroy()
-        self._sub_frames.clear()
+        if self._current_frame is not None:
+            self._current_frame.destroy()
+            self._current_frame = None
 
     @appconf.log_exception
     def about_readme(self) -> None:
