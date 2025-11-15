@@ -72,19 +72,30 @@ jobs:
             release/ForTeraterm-${{ github.ref_name }}.zip
             Output/SetupForTeraterm_${{ github.ref_name }}.exe
 
-      # 🔽 Publish前にchangelog生成
       - name: Generate changelog text
         id: changelog
         shell: pwsh
+        continue-on-error: true
         run: |
           git fetch --tags
+
           $current = "${{ github.ref_name }}"
-          $previous = git tag --sort=-creatordate | Where-Object { $_ -ne $current } | Select-Object -First 1
+          Write-Host "Current tag: $current"
+
+          # v付きタグだけを対象にし、現在のタグを除外した上で最新1件のみ取得
+          $previous = git tag --sort=-creatordate |
+            Where-Object { $_ -like "v*" -and $_ -ne $current } |
+            Select-Object -First 1
+
           if (-not $previous) {
+            Write-Host "No previous tag found. Using full log."
             $log = git log --pretty=format:"- %s"
-          } else {
-            $log = git log $previous..$current --pretty=format:"- %s"
           }
+          else {
+            Write-Host "Previous tag = $previous"
+            $log = git log "$previous..$current" --pretty=format:"- %s"
+          }
+
           echo "log=$log" >> $env:GITHUB_OUTPUT
 
       - name: Publish release
@@ -96,4 +107,5 @@ jobs:
             Output/SetupForTeraterm_${{ github.ref_name }}.exe
           body: |
             ## 📌 Changes
-            ${{ steps.changelog.outputs.log }}
+            ${{ steps.changelog.outputs.log || 'Changelog could not be generated.' }}
+
