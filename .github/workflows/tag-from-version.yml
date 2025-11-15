@@ -3,7 +3,7 @@ name: Auto Tag from version.iss
 on:
   push:
     paths:
-      - "version.iss"   # version.iss が変更されたときのみ発火
+      - "version.iss"
 
 permissions:
   contents: write
@@ -14,25 +14,37 @@ jobs:
 
     steps:
       - name: Checkout repository
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # タグ生成に必要
+          fetch-depth: 0   # tag 作成に必要
 
       - name: Extract version number
         id: version
+        shell: bash
         run: |
-          # version.iss 内の MyAppVersion を抜き出す
-          VER=$(grep -oP '(?<=#define MyAppVersion ")[^"]+' version.iss)
-          echo "ver=$VER" >> $GITHUB_OUTPUT
+          # version.iss 内の MyAppVersion を抽出
+          ver=$(grep -oP '(?<=#define MyAppVersion ")[^"]+' version.iss)
+          echo "Detected version: $ver"
+          echo "ver=$ver" >> $GITHUB_OUTPUT
 
       - name: Check if tag already exists
+        shell: bash
         run: |
           if git rev-parse "v${{ steps.version.outputs.ver }}" >/dev/null 2>&1; then
-            echo "Tag already exists. Skipping."
-            exit 1
+            echo "Tag v${{ steps.version.outputs.ver }} already exists. Skipping."
+            exit 0
           fi
 
-      - name: Create tag
+      - name: Configure Git user
+        shell: bash
         run: |
-          git tag "v${{ steps.version.outputs.ver }}"
-          git push origin "v${{ steps.version.outputs.ver }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create tag
+        shell: bash
+        run: |
+          tag="v${{ steps.version.outputs.ver }}"
+          git tag "$tag"
+          git push origin "$tag"
+          echo "Created and pushed tag $tag"
