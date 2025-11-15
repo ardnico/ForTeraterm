@@ -61,8 +61,17 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path release -Force | Out-Null
           $tag = "${{ github.ref_name }}"         # v1.0.4
-          $ver = $tag.TrimStart("v")              # 1.0.4
-          Compress-Archive -Path dist/main/* -DestinationPath "release/ForTeraterm-$ver.zip" -Force
+          $archivePath = "release/ForTeraterm-$tag.zip"
+
+          Compress-Archive -Path dist/main/* -DestinationPath $archivePath -Force
+
+          $installer = Join-Path "Output" "SetupForTeraterm.exe"
+          if (-not (Test-Path $installer)) {
+            throw "Installer executable not found at $installer"
+          }
+
+          $versionedInstaller = Join-Path "Output" "SetupForTeraterm_$tag.exe"
+          Copy-Item -Path $installer -Destination $versionedInstaller -Force
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
