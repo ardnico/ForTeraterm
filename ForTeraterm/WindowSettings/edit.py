@@ -311,8 +311,15 @@ class Edit(ThemeFrame1):
     
     @staticmethod
     def open_file_dialog(filetypes,initialdir):
-        # Open a file dialog and get the selected file path
-        # [('data files','*.csv;*.txt')]
+        """Open a file dialog and get the selected file path.
+
+        The ``initialdir`` argument accepts ``str``, :class:`pathlib.Path`, or
+        ``None`` values; :class:`pathlib.Path` objects are converted to strings
+        before calling :func:`tkinter.filedialog.askopenfilename`.
+        """
+
+        if initialdir is not None:
+            initialdir = os.fspath(initialdir)
         file_path = filedialog.askopenfilename(filetypes=filetypes,initialdir=initialdir)
         if file_path:
             return file_path
