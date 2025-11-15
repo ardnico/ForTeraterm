@@ -1,97 +1,50 @@
-name: Build and Release
+name: Auto Tag from version.iss
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    paths:
+      - "version.iss"
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
+  create-tag:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          fetch-depth: 0   # tag 作成に必要
 
-      - name: Install dependencies
-        shell: pwsh
+      - name: Extract version number
+        id: version
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest pyinstaller customtkinter pillow pyautogui pyinstaller-hooks-contrib
+          # version.iss 内の MyAppVersion を抽出
+          ver=$(grep -oP '(?<=#define MyAppVersion ")[^"]+' version.iss)
+          echo "Detected version: $ver"
+          echo "ver=$ver" >> $GITHUB_OUTPUT
 
-      - name: Run tests
-        shell: pwsh
-        run: pytest
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --no-progress -y
-
-      - name: Build application
-        shell: pwsh
+      - name: Check if tag already exists
+        shell: bash
         run: |
-          pyinstaller main.spec
-          New-Item -ItemType Directory -Path dist/main/img -Force | Out-Null
-          New-Item -ItemType Directory -Path dist/main/locales -Force | Out-Null
-          New-Item -ItemType Directory -Path dist/main/icons -Force | Out-Null
-          Copy-Item -Path img\* -Destination dist/main/img/ -Recurse -Force
-          Copy-Item -Path locales\* -Destination dist/main/locales/ -Recurse -Force
-          Copy-Item -Path icons\* -Destination dist/main/icons/ -Recurse -Force
-          Copy-Item -Path README.pdf -Destination dist/main/ -Force
-          python write_mkinstiss.py
-          & "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" mkinst.iss
+          if git rev-parse "v${{ steps.version.outputs.ver }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.version.outputs.ver }} already exists. Skipping."
+            exit 0
+          fi
 
-      - name: Create archives
-        shell: pwsh
+      - name: Configure Git user
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Path release -Force | Out-Null
-          $ver = "${{ github.ref_name }}"
-          $ver = $ver.TrimStart("v")  # v1.0.4 → 1.0.4
-          Compress-Archive -Path dist/main/* -DestinationPath "release/ForTeraterm_${ver}.zip" -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ForTeraterm-${{ github.ref_name }}
-          path: |
-            release/ForTeraterm-${{ github.ref_name }}.zip
-            Output/SetupForTeraterm-${{ github.ref_name }}.exe
-
-      - name: Generate changelog text
-        id: changelog
-        shell: pwsh
+      - name: Create tag
+        shell: bash
         run: |
-          git fetch --tags
-          $current = "${{ github.ref_name }}"
-          # 現在のタグを除いた最新タグを取得
-          $previous = git tag --sort=-creatordate | Where-Object { $_ -ne "v$current" } | Select-Object -First 1
-          if (-not $previous) {
-            # 初回リリースなど前タグが無い場合
-            $log = git log --pretty=format:"- %s"
-          } else {
-            $log = git log $previous..v$current --pretty=format:"- %s"
-          }
-          echo "log=$log" >> $env:GITHUB_OUTPUT
-
-      - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            release/ForTeraterm-${{ github.ref_name }}.zip
-            Output/SetupForTeraterm-${{ github.ref_name }}.exe
-          body: |
-            ## Changes
-            ${{ github.event.release.body }}
-            ### Commits
-            ${{ steps.changelog.outputs.log }}
-
+          tag="v${{ steps.version.outputs.ver }}"
+          git tag "$tag"
+          git push origin "$tag"
+          echo "Created and pushed tag $tag"
