@@ -46,22 +46,37 @@ ForTeraterm/
 - Tera Term installed locally (required once you start launching sessions)
 - Windows users should install the Tera Term 64-bit binaries; macOS/Linux users can run the launcher but will need a remote Windows host for Tera Term itself.
 
+### Clone the repository (with submodules)
+The `CTkMessagebox` widget is tracked as a Git submodule. Make sure you pull it down the first time you clone:
+
+```bash
+git clone --recursive https://github.com/<your-account>/ForTeraterm.git
+cd ForTeraterm
+
+# If you already cloned without --recursive, run this once inside the repo:
+git submodule update --init --recursive
+```
+
 ### Create a virtual environment
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .\.venv\Scripts\Activate.ps1
+# Windows PowerShell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+.\.venv\Scripts\Activate.ps1
+# macOS / Linux
+source .venv/bin/activate
 ```
 
 ### Install dependencies
-Runtime dependencies are listed in `requirements.txt`. For development, including the test suite, install the `requirements-dev.txt` bundle.
+Runtime dependencies are listed in `requirements.txt`. For development, including the test suite, install the `requirements-dev.txt` bundle **from the repository root**:
 
 ```bash
-pip install --upgrade pip
-pip install -r requirements-dev.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
 ```
 
 ## Running the application
-After activating the virtual environment and installing dependencies, launch the CustomTkinter UI with:
+After activating the virtual environment and installing dependencies, launch the CustomTkinter UI from the repository root with:
 
 ```bash
 python main.py
