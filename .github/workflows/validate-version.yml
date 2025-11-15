@@ -1,0 +1,27 @@
+name: Validate version on PR
+
+on:
+  pull_request:
+    paths:
+      - "version.iss"
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VER=$(grep -oP '(?<=#define MyAppVersion ")[^"]+' version.iss)
+          echo "ver=$VER" >> $GITHUB_OUTPUT
+
+      - name: Check if version already tagged
+        run: |
+          if git tag -l | grep -qx "v${{ steps.version.outputs.ver }}"; then
+            echo "❌ version already exists"
+            exit 1
+          fi

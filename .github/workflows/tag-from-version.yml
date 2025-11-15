@@ -1,0 +1,38 @@
+name: Auto Tag from version.iss
+
+on:
+  push:
+    paths:
+      - "version.iss"   # version.iss が変更されたときのみ発火
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # タグ生成に必要
+
+      - name: Extract version number
+        id: version
+        run: |
+          # version.iss 内の MyAppVersion を抜き出す
+          VER=$(grep -oP '(?<=#define MyAppVersion ")[^"]+' version.iss)
+          echo "ver=$VER" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.ver }}" >/dev/null 2>&1; then
+            echo "Tag already exists. Skipping."
+            exit 1
+          fi
+
+      - name: Create tag
+        run: |
+          git tag "v${{ steps.version.outputs.ver }}"
+          git push origin "v${{ steps.version.outputs.ver }}"

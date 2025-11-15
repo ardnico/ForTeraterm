@@ -9,6 +9,7 @@ a = Analysis(
     hiddenimports=['tkinter'],
     hookspath=[],
     hooksconfig={},
+    version='version.iss',
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
