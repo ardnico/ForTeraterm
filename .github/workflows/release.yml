@@ -63,8 +63,24 @@ jobs:
         with:
           name: ForTeraterm-${{ github.ref_name }}
           path: |
-            release/ForTeraterm_${{ github.ref_name }}.zip
-            Output/SetupForTeraterm_${{ github.ref_name }}.exe
+            release/ForTeraterm-${{ github.ref_name }}.zip
+            Output/SetupForTeraterm-${{ github.ref_name }}.exe
+
+      - name: Generate changelog text
+        id: changelog
+        shell: pwsh
+        run: |
+          git fetch --tags
+          $current = "${{ github.ref_name }}"
+          # 現在のタグを除いた最新タグを取得
+          $previous = git tag --sort=-creatordate | Where-Object { $_ -ne "v$current" } | Select-Object -First 1
+          if (-not $previous) {
+            # 初回リリースなど前タグが無い場合
+            $log = git log --pretty=format:"- %s"
+          } else {
+            $log = git log $previous..v$current --pretty=format:"- %s"
+          }
+          echo "log=$log" >> $env:GITHUB_OUTPUT
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
@@ -72,15 +88,10 @@ jobs:
         with:
           files: |
             release/ForTeraterm-${{ github.ref_name }}.zip
-            Output/SetupForTeraterm.exe
+            Output/SetupForTeraterm-${{ github.ref_name }}.exe
           body: |
             ## Changes
             ${{ github.event.release.body }}
             ### Commits
             ${{ steps.changelog.outputs.log }}
 
-      - name: Generate changelog text
-        id: changelog
-        run: |
-          LOG=$(git log $(git describe --tags --abbrev=0 --tags ^${GITHUB_REF_NAME})..${GITHUB_REF_NAME} --pretty=format:"- %s")
-          echo "log=$LOG" >> $GITHUB_OUTPUT
