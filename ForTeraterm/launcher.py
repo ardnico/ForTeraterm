@@ -28,12 +28,31 @@ class Launcher:
         self.storage = storage
         self.stub_mode = stub_mode
 
-    def launch(self, profile: Profile, command_set: CommandSet, credential: Optional[Credential],
-               password_fallback: Optional[str]) -> LaunchResult:
+    def launch(
+        self,
+        profile: Profile,
+        command_set: CommandSet,
+        credential: Optional[Credential],
+        password_fallback: Optional[str],
+    ) -> LaunchResult:
         password = credential.secret if credential else password_fallback
-        ttl_content = self.renderer.render(profile, command_set, password)
-        ttl_file = self._write_ttl(ttl_content)
-        wlog_path = ttl_file.with_suffix(".wlog")
+        ttl_file: Optional[Path] = None
+        wlog_path: Optional[Path] = None
+        try:
+            ttl_content = self.renderer.render(profile, command_set, password)
+            ttl_file = self._write_ttl(ttl_content)
+            wlog_path = ttl_file.with_suffix(".wlog")
+        except Exception:
+            # TTL lint/rendering failure
+            self._record_history(
+                profile,
+                command_set,
+                result="failed",
+                error_code="ttl_lint_failed",
+                error_message="TTL validation failed",
+                wlog_path=None,
+            )
+            raise
         try:
             if self.stub_mode:
                 self._run_stub(profile, command_set, password, ttl_file, wlog_path)
@@ -41,20 +60,40 @@ class Launcher:
                 raise NotImplementedError("Real Tera Term execution not implemented in this environment")
             error_code = self._analyze_wlog(wlog_path)
             result = "success" if error_code is None else "failed"
+        except Exception:
+            self._record_history(
+                profile,
+                command_set,
+                result="failed",
+                error_code="launch_failed",
+                error_message="Stub/launcher failure",
+                wlog_path=wlog_path,
+            )
+            raise
         finally:
-            try:
-                ttl_file.unlink()
-            except FileNotFoundError:
-                pass
-        self._record_history(profile, command_set, result, error_code, wlog_path)
-        return LaunchResult(result=result, error_code=error_code, wlog_path=wlog_path)
+            if ttl_file:
+                try:
+                    ttl_file.unlink()
+                except FileNotFoundError:
+                    pass
+        self._record_history(
+            profile,
+            command_set,
+            result=result,
+            error_code=error_code,
+            error_message=error_code,
+            wlog_path=wlog_path,
+        )
+        return LaunchResult(result=result, error_code=error_code, wlog_path=wlog_path or Path(""))
 
     def _write_ttl(self, content: str) -> Path:
         ttl_file = Path(tempfile.mkstemp(prefix="tt-launch-", suffix=".ttl")[1])
         ttl_file.write_text(content, encoding="utf-8")
         return ttl_file
 
-    def _run_stub(self, profile: Profile, command_set: CommandSet, password: Optional[str], ttl_file: Path, wlog: Path) -> None:
+    def _run_stub(
+        self, profile: Profile, command_set: CommandSet, password: Optional[str], ttl_file: Path, wlog: Path
+    ) -> None:
         lines = [
             f"Connecting to {profile.host}:{profile.port} as {profile.user}",
             "Using stub mode - not invoking Tera Term",
@@ -90,7 +129,8 @@ class Launcher:
         command_set: CommandSet,
         result: str,
         error_code: Optional[str],
-        wlog_path: Path,
+        error_message: Optional[str],
+        wlog_path: Optional[Path],
     ) -> None:
         record = HistoryRecord(
             id=None,
@@ -99,9 +139,9 @@ class Launcher:
             connected_at=dt.datetime.utcnow().isoformat(),
             result=result,
             error_code=error_code,
-            error_message_short=error_code,
+            error_message_short=error_message,
             ttl_template_version=profile.ttl_template_version,
-            wlog_path=str(wlog_path),
+            wlog_path=str(wlog_path) if wlog_path else None,
         )
         self.storage.record_history(record)
 

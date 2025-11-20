@@ -34,8 +34,13 @@ def test_profile_and_history_roundtrip(tmp_path: Path) -> None:
 
     profiles = db.list_profiles()
     assert len(profiles) == 1
-    history = db.list_history_for_profile(profile_id)
+    history = db.list_history_for_profile(profile_id, result_filter="success")
     assert len(history) == 1
+    filtered = db.list_history_for_profile(profile_id, result_filter="failed")
+    assert filtered == []
     exported = db.export_data()
     assert exported["schema_version"] == 1
+    assert exported["profiles"][0]["command_set_ids"] == ["cmd:test"]
+    assert "exported_at" in exported
+    assert db.list_command_sets()
     db.close()

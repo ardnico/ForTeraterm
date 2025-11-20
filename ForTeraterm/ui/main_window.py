@@ -27,6 +27,7 @@ class MainWindow(ctk.CTk):
         self.launcher = Launcher(self.renderer, self.storage, stub_mode=True)
         self.selected_profile: Profile | None = None
         self.command_set_cache: dict[int, CommandSet] = {}
+        self.history_records = []
 
         self._build_ui()
         self._load_profiles()
@@ -55,8 +56,19 @@ class MainWindow(ctk.CTk):
         right_frame = ctk.CTkFrame(main_frame)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         ctk.CTkLabel(right_frame, text="Recent History").pack(anchor=tk.W, padx=6, pady=4)
-        self.history_box = tk.Text(right_frame, state="disabled")
-        self.history_box.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        filter_frame = ctk.CTkFrame(right_frame)
+        filter_frame.pack(fill=tk.X, padx=6, pady=(0, 6))
+        ctk.CTkLabel(filter_frame, text="Result").pack(side=tk.LEFT, padx=4)
+        self.result_filter = tk.StringVar(value="all")
+        ctk.CTkOptionMenu(filter_frame, variable=self.result_filter, values=["all", "success", "failed", "unknown"], command=lambda _=None: self._load_history()).pack(side=tk.LEFT, padx=4)
+        ctk.CTkLabel(filter_frame, text="Command Set").pack(side=tk.LEFT, padx=4)
+        self.command_filter = tk.StringVar(value="all")
+        self.command_menu = ctk.CTkOptionMenu(filter_frame, variable=self.command_filter, values=["all"], command=lambda _=None: self._load_history())
+        self.command_menu.pack(side=tk.LEFT, padx=4)
+
+        self.history_list = tk.Listbox(right_frame, exportselection=False)
+        self.history_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        self.history_list.bind("<Double-Button-1>", lambda event: self._relaunch_history())
 
     def _status_text(self) -> str:
         if self.cred_store.restricted:
@@ -85,6 +97,7 @@ class MainWindow(ctk.CTk):
     def _on_select(self) -> None:
         profile = self._get_selected_profile()
         self.selected_profile = profile
+        self._update_command_filter()
         self._load_history()
 
     def _new_profile(self) -> None:
@@ -97,6 +110,16 @@ class MainWindow(ctk.CTk):
         if command_set_id not in self.command_set_cache:
             self.command_set_cache[command_set_id] = self.storage.get_command_set(command_set_id)
         return self.command_set_cache[command_set_id]
+
+    def _update_command_filter(self) -> None:
+        if not self.selected_profile:
+            self.command_menu.configure(values=["all"])
+            self.command_filter.set("all")
+            return
+        cs = self._get_command_set(self.selected_profile.command_set_id)
+        values = ["all", cs.label]
+        self.command_menu.configure(values=values)
+        self.command_filter.set("all")
 
     def _connect(self) -> None:
         profile = self._get_selected_profile()
@@ -131,23 +154,70 @@ class MainWindow(ctk.CTk):
             messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
         self._load_history()
 
-    def _load_history(self) -> None:
-        self.history_box.configure(state="normal")
-        self.history_box.delete("1.0", tk.END)
-        if not self.selected_profile:
-            self.history_box.configure(state="disabled")
+    def _relaunch_history(self) -> None:
+        if not self.history_records:
             return
-        history = self.storage.list_history_for_profile(self.selected_profile.id or 0, limit=20)
-        lines = []
+        selection = self.history_list.curselection()
+        if not selection:
+            return
+        record = self.history_records[selection[0]]
+        profile = self._get_selected_profile()
+        if profile is None:
+            return
+        try:
+            command_set = self._get_command_set(record.command_set_id or profile.command_set_id)
+        except Exception:
+            messagebox.showerror("Error", "Command set missing for this history entry")
+            return
+        credential = None
+        password_fallback = None
+        if profile.cred_ref and not self.cred_store.restricted:
+            credential = self.cred_store.get(profile.cred_ref)
+        if credential is None:
+            dialog = PasswordDialog(self, title="Enter password for this session")
+            self.wait_window(dialog)
+            password_fallback = dialog.password
+            if password_fallback is None:
+                return
+        try:
+            result = self.launcher.launch(profile, command_set, credential, password_fallback)
+        except Exception as exc:
+            messagebox.showerror("Launch failed", str(exc))
+            return
+        if result.result == "success":
+            messagebox.showinfo("Success", "Re-run completed (stub mode)")
+        else:
+            messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
+        self._load_history()
+
+    def _load_history(self) -> None:
+        self.history_list.delete(0, tk.END)
+        self.history_records = []
+        if not self.selected_profile:
+            return
+        cs_filter = None
+        if self.command_filter.get() != "all":
+            cs_filter = self.selected_profile.command_set_id
+        history = self.storage.list_history_for_profile(
+            self.selected_profile.id or 0,
+            limit=50,
+            result_filter=self.result_filter.get(),
+            command_set_id=cs_filter,
+        )
+        self.history_records = history
         for record in history:
-            line = f"{record.connected_at} - {record.result}"
+            summary = f"{record.connected_at} | {record.result}"
             if record.error_code:
-                line += f" ({record.error_code})"
-            lines.append(line)
-        if not lines:
-            lines.append("No history yet")
-        self.history_box.insert(tk.END, "\n".join(lines))
-        self.history_box.configure(state="disabled")
+                summary += f" ({record.error_code})"
+            if record.command_set_id:
+                try:
+                    cs = self._get_command_set(record.command_set_id)
+                    summary += f" | {cs.label}"
+                except Exception:
+                    summary += " | unknown commands"
+            self.history_list.insert(tk.END, summary)
+        if not history:
+            self.history_list.insert(tk.END, "No history yet")
 
 
 __all__ = ["MainWindow"]
