@@ -9,6 +9,7 @@ import customtkinter as ctk
 
 from ..credential_store import CredentialStore
 from ..storage import CommandSet, DataStore, Profile
+from .credential_dialog import CredentialDialog
 
 
 class ProfileDialog(ctk.CTkToplevel):
@@ -45,26 +46,23 @@ class ProfileDialog(ctk.CTkToplevel):
         self.command_text.grid(row=7, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4)
 
         # Credential fields
-        ctk.CTkLabel(body, text="Credential Label").grid(row=8, column=0, sticky=tk.W, padx=4, pady=(12, 4))
-        self.cred_label_entry = ctk.CTkEntry(body)
-        self.cred_label_entry.grid(row=8, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
-        ctk.CTkLabel(body, text="Credential Username (optional)").grid(row=9, column=0, sticky=tk.W, padx=4, pady=4)
-        self.cred_user_entry = ctk.CTkEntry(body)
-        self.cred_user_entry.grid(row=9, column=1, sticky=tk.EW, padx=4, pady=4)
-        ctk.CTkLabel(body, text="Credential Secret").grid(row=10, column=0, sticky=tk.W, padx=4, pady=4)
-        self.cred_secret_entry = ctk.CTkEntry(body, show="*")
-        self.cred_secret_entry.grid(row=10, column=1, sticky=tk.EW, padx=4, pady=4)
+        ctk.CTkLabel(body, text="Credential Reference").grid(row=8, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        self.cred_var = tk.StringVar(value="(none)")
+        self.cred_options = ["(none)"] + self.storage.list_credential_refs()
+        self.cred_menu = ctk.CTkOptionMenu(body, variable=self.cred_var, values=self.cred_options, state="normal")
+        self.cred_menu.grid(row=8, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
+        ctk.CTkButton(body, text="New Credential", command=self._new_credential).grid(
+            row=9, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4
+        )
 
         if self.cred_store.restricted:
-            self.cred_label_entry.configure(state="disabled")
-            self.cred_user_entry.configure(state="disabled")
-            self.cred_secret_entry.configure(state="disabled")
+            self.cred_menu.configure(state="disabled")
             ctk.CTkLabel(body, text="Credential storage disabled; password will be requested at connect time.").grid(
-                row=11, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
         else:
             ctk.CTkLabel(body, text="Credentials are stored securely via keyring").grid(
-                row=11, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
 
         button_frame = ctk.CTkFrame(self)
@@ -76,6 +74,18 @@ class ProfileDialog(ctk.CTkToplevel):
 
         for i in range(2):
             body.grid_columnconfigure(i, weight=1)
+
+    def _new_credential(self) -> None:
+        if self.cred_store.restricted:
+            messagebox.showwarning("Restricted", "Credential storage is disabled in this environment")
+            return
+        dialog = CredentialDialog(self, cred_store=self.cred_store)
+        self.wait_window(dialog)
+        if dialog.cred_ref:
+            if dialog.cred_ref not in self.cred_options:
+                self.cred_options.append(dialog.cred_ref)
+                self.cred_menu.configure(values=self.cred_options)
+            self.cred_var.set(dialog.cred_ref)
 
     def _add_entry(self, frame: ctk.CTkFrame, label: str, row: int, default: str | None = None) -> ctk.CTkEntry:
         ctk.CTkLabel(frame, text=label).grid(row=row, column=0, sticky=tk.W, padx=4, pady=4)
@@ -105,12 +115,8 @@ class ProfileDialog(ctk.CTkToplevel):
             return
 
         cred_ref: str | None = None
-        if not self.cred_store.restricted:
-            cred_label = self.cred_label_entry.get().strip()
-            cred_user = self.cred_user_entry.get().strip() or None
-            cred_secret = self.cred_secret_entry.get().strip()
-            if cred_label and cred_secret:
-                cred_ref = self.cred_store.register(cred_label, cred_user, cred_secret)
+        if not self.cred_store.restricted and self.cred_var.get() != "(none)":
+            cred_ref = self.cred_var.get()
 
         command_set = CommandSet(
             id=None,

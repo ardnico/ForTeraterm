@@ -46,3 +46,18 @@ def test_invalid_command_with_newline_raises(tmp_path: Path) -> None:
     cs.commands = ["bad\ncommand"]
     with pytest.raises(ValueError):
         renderer(tmp_path).render(sample_profile(), cs, password="secret")
+
+
+def test_empty_commands_raise(tmp_path: Path) -> None:
+    cs = sample_command_set()
+    cs.commands = []
+    with pytest.raises(ValueError):
+        renderer(tmp_path).render(sample_profile(), cs, password="secret")
+
+
+def test_password_and_command_are_escaped(tmp_path: Path) -> None:
+    cs = sample_command_set()
+    cs.commands = ['echo "hello"']
+    ttl = renderer(tmp_path).render(sample_profile(), cs, password='p"ass')
+    assert '/passwd=\\"p""ass\\"' in ttl
+    assert 'sendln "echo ""hello"""' in ttl

@@ -6,6 +6,7 @@ storing profiles, command sets, and connection history records.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import sqlite3
 from dataclasses import dataclass
@@ -197,6 +198,22 @@ class DataStore:
             commands=json.loads(row["commands"]),
         )
 
+    def list_command_sets(self) -> List[CommandSet]:
+        cur = self._conn.execute(
+            "SELECT id, ref_id, label, description, commands FROM command_sets ORDER BY label"
+        )
+        rows = cur.fetchall()
+        return [
+            CommandSet(
+                id=row["id"],
+                ref_id=row["ref_id"],
+                label=row["label"],
+                description=row["description"],
+                commands=json.loads(row["commands"]),
+            )
+            for row in rows
+        ]
+
     # ---------- Profiles ----------
     def upsert_profile(self, profile: Profile) -> int:
         cur = self._conn.cursor()
@@ -307,17 +324,23 @@ class DataStore:
         self._conn.commit()
         return int(new_id)
 
-    def list_history_for_profile(self, profile_id: int, limit: int = 50) -> List[HistoryRecord]:
-        cur = self._conn.execute(
-            """
-            SELECT id, profile_id, command_set_id, connected_at, result, error_code, error_message_short, ttl_template_version, wlog_path
-              FROM history
-             WHERE profile_id=?
-             ORDER BY datetime(connected_at) DESC
-             LIMIT ?
-            """,
-            (profile_id, limit),
+    def list_history_for_profile(
+        self, profile_id: int, *, limit: int = 50, result_filter: Optional[str] = None, command_set_id: Optional[int] = None
+    ) -> List[HistoryRecord]:
+        query = (
+            "SELECT id, profile_id, command_set_id, connected_at, result, error_code, error_message_short, ttl_template_version, wlog_path"
+            " FROM history WHERE profile_id=?"
         )
+        params: list[object] = [profile_id]
+        if result_filter and result_filter != "all":
+            query += " AND result=?"
+            params.append(result_filter)
+        if command_set_id:
+            query += " AND command_set_id=?"
+            params.append(command_set_id)
+        query += " ORDER BY datetime(connected_at) DESC LIMIT ?"
+        params.append(limit)
+        cur = self._conn.execute(query, params)
         rows = cur.fetchall()
         return [
             HistoryRecord(
@@ -334,6 +357,10 @@ class DataStore:
             for row in rows
         ]
 
+    def list_credential_refs(self) -> List[str]:
+        cur = self._conn.execute("SELECT DISTINCT cred_ref FROM profiles WHERE cred_ref IS NOT NULL")
+        return [row[0] for row in cur.fetchall() if row[0]]
+
     # ---------- Export / Import ----------
     def export_data(self) -> dict:
         profiles = self.list_profiles()
@@ -342,6 +369,7 @@ class DataStore:
         ).fetchall()
         return {
             "schema_version": SCHEMA_VERSION,
+            "exported_at": dt.datetime.utcnow().isoformat(),
             "profiles": [
                 {
                     "id": profile.id,
@@ -352,7 +380,7 @@ class DataStore:
                     "auth_type": profile.auth_type,
                     "cred_ref": profile.cred_ref,
                     "ttl_template_version": profile.ttl_template_version,
-                    "command_set_id": self.get_command_set(profile.command_set_id).ref_id,
+                    "command_set_ids": [self.get_command_set(profile.command_set_id).ref_id],
                 }
                 for profile in profiles
             ],
@@ -383,7 +411,10 @@ class DataStore:
             )
             ref_to_id[cs.ref_id] = self.upsert_command_set(cs)
         for profile in data.get("profiles", []):
-            ref_id = profile.get("command_set_id")
+            ref_ids = profile.get("command_set_ids") or []
+            if len(ref_ids) != 1:
+                raise ValueError("MVP supports exactly one command_set per profile")
+            ref_id = ref_ids[0]
             if ref_id not in ref_to_id:
                 raise ValueError(f"Command set {ref_id} referenced by profile is missing")
             new_profile = Profile(
@@ -405,8 +436,8 @@ class DataStore:
 
 __all__ = [
     "CommandSet",
-    "DataStore",
-    "HistoryRecord",
     "Profile",
+    "HistoryRecord",
+    "DataStore",
     "SCHEMA_VERSION",
 ]
