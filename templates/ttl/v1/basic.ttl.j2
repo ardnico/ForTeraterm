@@ -1,0 +1,14 @@
+; Generated TTL script (v1-basic) for {user}@{host}
+
+; Connect to the target host using SSH
+connect "{user}@{host}:{port} /ssh /2 /auth={auth_type}{passwd_flag}"
+if result = 0 then
+    messagebox "Connection failed"
+    end
+endif
+
+; Execute provided commands
+{commands_block}
+
+; End of script
+end
