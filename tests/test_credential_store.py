@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import keyring
 from keyring.backend import KeyringBackend
 
