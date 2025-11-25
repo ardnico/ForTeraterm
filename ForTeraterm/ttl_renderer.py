@@ -22,6 +22,7 @@ class TTLContext:
     user: str
     auth_type: str
     commands: List[str]
+    ssh_options: str
     password: Optional[str]
 
 
@@ -38,8 +39,6 @@ class TTLRenderer:
             raise ValueError("Port must be positive")
         if ctx.auth_type not in ALLOWED_AUTH_TYPES:
             raise ValueError("Unsupported auth_type")
-        if not ctx.commands:
-            raise ValueError("At least one command is required")
         for cmd in ctx.commands:
             if "\n" in cmd or "\r" in cmd:
                 raise ValueError("Commands must be single-line")
@@ -49,6 +48,8 @@ class TTLRenderer:
                 raise ValueError("Commands contain control characters")
         if ctx.password and ("\n" in ctx.password or "\r" in ctx.password):
             raise ValueError("Password cannot contain newlines")
+        if ctx.ssh_options and ("\n" in ctx.ssh_options or "\r" in ctx.ssh_options):
+            raise ValueError("SSH options cannot contain newlines")
 
     def validate_output(self, ttl_content: str) -> None:
         lowered = ttl_content.lower()
@@ -69,6 +70,7 @@ class TTLRenderer:
             user=profile.user,
             auth_type=profile.auth_type,
             commands=command_set.commands,
+            ssh_options=profile.ssh_options,
             password=password,
         )
         self.validate_context(ctx)
@@ -78,12 +80,14 @@ class TTLRenderer:
         passwd_flag = ""
         if ctx.password:
             passwd_flag = f" /passwd=\\\"{self._escape(ctx.password)}\\\""
+        ssh_options = f" {self._escape(ctx.ssh_options.strip())}" if ctx.ssh_options.strip() else ""
         ttl_content = template_text.format(
             user=ctx.user,
             host=ctx.host,
             port=ctx.port,
             auth_type=ctx.auth_type,
             passwd_flag=passwd_flag,
+            ssh_options=ssh_options,
             commands_block="\n".join(f'sendln "{cmd}"' for cmd in commands_block),
         )
         self.validate_output(ttl_content)
