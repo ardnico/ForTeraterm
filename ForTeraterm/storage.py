@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import List, Optional
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 @dataclass
@@ -39,6 +39,7 @@ class Profile:
     user: str
     auth_type: str
     cred_ref: Optional[str]
+    ssh_options: str
     ttl_template_version: str
     command_set_id: int
 
@@ -76,7 +77,9 @@ class DataStore:
             self._create_schema()
             self._conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             self._conn.commit()
-        elif current_version != SCHEMA_VERSION:
+        elif current_version < SCHEMA_VERSION:
+            self._migrate_schema(current_version)
+        elif current_version > SCHEMA_VERSION:
             raise RuntimeError(
                 f"Unsupported schema version {current_version}; expected {SCHEMA_VERSION}."
             )
@@ -104,6 +107,7 @@ class DataStore:
                 user TEXT NOT NULL,
                 auth_type TEXT NOT NULL,
                 cred_ref TEXT,
+                ssh_options TEXT NOT NULL DEFAULT '',
                 ttl_template_version TEXT NOT NULL,
                 command_set_id INTEGER NOT NULL,
                 FOREIGN KEY(command_set_id) REFERENCES command_sets(id)
@@ -127,6 +131,15 @@ class DataStore:
             );
             """
         )
+        self._conn.commit()
+
+    def _migrate_schema(self, current_version: int) -> None:
+        version = current_version
+        cur = self._conn.cursor()
+        if version == 1:
+            cur.execute("ALTER TABLE profiles ADD COLUMN ssh_options TEXT NOT NULL DEFAULT ''")
+            version = 2
+        self._conn.execute(f"PRAGMA user_version={version}")
         self._conn.commit()
 
     # ---------- Command sets ----------
@@ -221,8 +234,8 @@ class DataStore:
             cur.execute(
                 """
                 INSERT INTO profiles
-                    (name, host, port, user, auth_type, cred_ref, ttl_template_version, command_set_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id;
                 """,
                 (
@@ -232,6 +245,7 @@ class DataStore:
                     profile.user,
                     profile.auth_type,
                     profile.cred_ref,
+                    profile.ssh_options,
                     profile.ttl_template_version,
                     profile.command_set_id,
                 ),
@@ -240,7 +254,7 @@ class DataStore:
             cur.execute(
                 """
                 UPDATE profiles
-                   SET name=?, host=?, port=?, user=?, auth_type=?, cred_ref=?, ttl_template_version=?, command_set_id=?
+                   SET name=?, host=?, port=?, user=?, auth_type=?, cred_ref=?, ssh_options=?, ttl_template_version=?, command_set_id=?
                  WHERE id=?
                 RETURNING id;
                 """,
@@ -251,6 +265,7 @@ class DataStore:
                     profile.user,
                     profile.auth_type,
                     profile.cred_ref,
+                    profile.ssh_options,
                     profile.ttl_template_version,
                     profile.command_set_id,
                     profile.id,
@@ -262,7 +277,7 @@ class DataStore:
 
     def list_profiles(self) -> List[Profile]:
         cur = self._conn.execute(
-            "SELECT id, name, host, port, user, auth_type, cred_ref, ttl_template_version, command_set_id FROM profiles ORDER BY name"
+            "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles ORDER BY name"
         )
         rows = cur.fetchall()
         return [
@@ -274,6 +289,7 @@ class DataStore:
                 user=row["user"],
                 auth_type=row["auth_type"],
                 cred_ref=row["cred_ref"],
+                ssh_options=row["ssh_options"],
                 ttl_template_version=row["ttl_template_version"],
                 command_set_id=row["command_set_id"],
             )
@@ -282,7 +298,7 @@ class DataStore:
 
     def get_profile(self, profile_id: int) -> Profile:
         cur = self._conn.execute(
-            "SELECT id, name, host, port, user, auth_type, cred_ref, ttl_template_version, command_set_id FROM profiles WHERE id=?",
+            "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles WHERE id=?",
             (profile_id,),
         )
         row = cur.fetchone()
@@ -296,6 +312,7 @@ class DataStore:
             user=row["user"],
             auth_type=row["auth_type"],
             cred_ref=row["cred_ref"],
+            ssh_options=row["ssh_options"],
             ttl_template_version=row["ttl_template_version"],
             command_set_id=row["command_set_id"],
         )
@@ -379,6 +396,7 @@ class DataStore:
                     "user": profile.user,
                     "auth_type": profile.auth_type,
                     "cred_ref": profile.cred_ref,
+                    "ssh_options": profile.ssh_options,
                     "ttl_template_version": profile.ttl_template_version,
                     "command_set_ids": [self.get_command_set(profile.command_set_id).ref_id],
                 }
@@ -425,6 +443,7 @@ class DataStore:
                 user=profile["user"],
                 auth_type=profile.get("auth_type", "password"),
                 cred_ref=profile.get("cred_ref"),
+                ssh_options=profile.get("ssh_options", ""),
                 ttl_template_version=profile.get("ttl_template_version", "v1-basic"),
                 command_set_id=ref_to_id[ref_id],
             )

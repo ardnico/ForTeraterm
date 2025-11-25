@@ -20,6 +20,7 @@ def sample_profile() -> Profile:
         user="deploy",
         auth_type="password",
         cred_ref=None,
+        ssh_options="",
         ttl_template_version="v1-basic",
         command_set_id=1,
     )
@@ -48,11 +49,11 @@ def test_invalid_command_with_newline_raises(tmp_path: Path) -> None:
         renderer(tmp_path).render(sample_profile(), cs, password="secret")
 
 
-def test_empty_commands_raise(tmp_path: Path) -> None:
+def test_empty_commands_allowed(tmp_path: Path) -> None:
     cs = sample_command_set()
     cs.commands = []
-    with pytest.raises(ValueError):
-        renderer(tmp_path).render(sample_profile(), cs, password="secret")
+    ttl = renderer(tmp_path).render(sample_profile(), cs, password="secret")
+    assert "sendln" not in ttl.lower()
 
 
 def test_password_and_command_are_escaped(tmp_path: Path) -> None:
@@ -61,3 +62,11 @@ def test_password_and_command_are_escaped(tmp_path: Path) -> None:
     ttl = renderer(tmp_path).render(sample_profile(), cs, password='p"ass')
     assert '/passwd=\\"p""ass\\"' in ttl
     assert 'sendln "echo ""hello"""' in ttl
+
+
+def test_ssh_options_are_included(tmp_path: Path) -> None:
+    cs = sample_command_set()
+    profile = sample_profile()
+    profile.ssh_options = "/FWD=2222=localhost:22 /FWD=3333=localhost:33"
+    ttl = renderer(tmp_path).render(profile, cs, password=None)
+    assert "/auth=password /fwd=2222=localhost:22 /fwd=3333=localhost:33" in ttl.lower()

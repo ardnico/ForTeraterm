@@ -40,29 +40,37 @@ class ProfileDialog(ctk.CTkToplevel):
         )
 
         # Command set fields
-        self.command_label_entry = self._add_entry(body, "Command Set Label", 5, default="Default Commands")
-        ctk.CTkLabel(body, text="Commands (one per line)").grid(row=6, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        self.ssh_options_entry = self._add_entry(body, "SSH Options", 5, default="")
+        ctk.CTkLabel(body, text="(e.g. /FWD=2222=localhost:22 for port forwarding)").grid(
+            row=6, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
+        )
+
+        self.command_label_entry = self._add_entry(body, "Command Set Label", 7, default="Default Commands")
+        ctk.CTkLabel(body, text="Commands (one per line)").grid(row=8, column=0, sticky=tk.W, padx=4, pady=(12, 4))
         self.command_text = tk.Text(body, height=5, width=40)
-        self.command_text.grid(row=7, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4)
+        self.command_text.grid(row=9, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4)
+        ctk.CTkLabel(body, text="(Optional) Leave blank to skip post-login commands.").grid(
+            row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
+        )
 
         # Credential fields
-        ctk.CTkLabel(body, text="Credential Reference").grid(row=8, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        ctk.CTkLabel(body, text="Credential Reference").grid(row=11, column=0, sticky=tk.W, padx=4, pady=(12, 4))
         self.cred_var = tk.StringVar(value="(none)")
         self.cred_options = ["(none)"] + self.storage.list_credential_refs()
         self.cred_menu = ctk.CTkOptionMenu(body, variable=self.cred_var, values=self.cred_options, state="normal")
-        self.cred_menu.grid(row=8, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
+        self.cred_menu.grid(row=11, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
         ctk.CTkButton(body, text="New Credential", command=self._new_credential).grid(
-            row=9, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4
+            row=12, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4
         )
 
         if self.cred_store.restricted:
             self.cred_menu.configure(state="disabled")
             ctk.CTkLabel(body, text="Credential storage disabled; password will be requested at connect time.").grid(
-                row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=13, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
         else:
             ctk.CTkLabel(body, text="Credentials are stored securely via keyring").grid(
-                row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=13, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
 
         button_frame = ctk.CTkFrame(self)
@@ -101,6 +109,7 @@ class ProfileDialog(ctk.CTkToplevel):
         port_str = self.port_entry.get().strip()
         user = self.user_entry.get().strip()
         auth_type = self.auth_type.get()
+        ssh_options = self.ssh_options_entry.get().strip()
         if not name or not host or not port_str or not user:
             messagebox.showerror("Error", "Name, host, port, and user are required")
             return
@@ -110,9 +119,6 @@ class ProfileDialog(ctk.CTkToplevel):
             messagebox.showerror("Error", "Port must be a number")
             return
         commands = [line.strip() for line in self.command_text.get("1.0", tk.END).splitlines() if line.strip()]
-        if not commands:
-            messagebox.showerror("Error", "At least one command is required")
-            return
 
         cred_ref: str | None = None
         if not self.cred_store.restricted and self.cred_var.get() != "(none)":
@@ -136,6 +142,7 @@ class ProfileDialog(ctk.CTkToplevel):
             user=user,
             auth_type=auth_type,
             cred_ref=cred_ref,
+            ssh_options=ssh_options,
             ttl_template_version="v1-basic",
             command_set_id=command_set_id,
         )
