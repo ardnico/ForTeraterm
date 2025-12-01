@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,7 +88,9 @@ class Launcher:
         return LaunchResult(result=result, error_code=error_code, wlog_path=wlog_path or Path(""))
 
     def _write_ttl(self, content: str) -> Path:
-        ttl_file = Path(tempfile.mkstemp(prefix="tt-launch-", suffix=".ttl")[1])
+        fd, path_str = tempfile.mkstemp(prefix="tt-launch-", suffix=".ttl")
+        os.close(fd)
+        ttl_file = Path(path_str)
         ttl_file.write_text(content, encoding="utf-8")
         return ttl_file
 
