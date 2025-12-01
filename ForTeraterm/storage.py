@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import List, Optional
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 @dataclass
@@ -45,6 +45,16 @@ class Profile:
 
 
 @dataclass
+class AppSettings:
+    """Represents persisted application preferences."""
+
+    appearance_mode: str
+    color_theme: str
+    font_family: str
+    font_size: int
+
+
+@dataclass
 class HistoryRecord:
     """Represents a historical connection attempt."""
 
@@ -68,6 +78,12 @@ class DataStore:
         self._conn = sqlite3.connect(self.db_path)
         self._conn.row_factory = sqlite3.Row
         self._ensure_schema()
+        self.default_settings = AppSettings(
+            appearance_mode="system",
+            color_theme="blue",
+            font_family="Arial",
+            font_size=12,
+        )
 
     def _ensure_schema(self) -> None:
         cur = self._conn.cursor()
@@ -131,6 +147,14 @@ class DataStore:
             );
             """
         )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS preferences (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            """
+        )
         self._conn.commit()
 
     def _migrate_schema(self, current_version: int) -> None:
@@ -139,6 +163,16 @@ class DataStore:
         if version == 1:
             cur.execute("ALTER TABLE profiles ADD COLUMN ssh_options TEXT NOT NULL DEFAULT ''")
             version = 2
+        if version == 2:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS preferences (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+                """
+            )
+            version = 3
         self._conn.execute(f"PRAGMA user_version={version}")
         self._conn.commit()
 
@@ -210,6 +244,43 @@ class DataStore:
             description=row["description"],
             commands=json.loads(row["commands"]),
         )
+
+    # ---------- Preferences ----------
+    def load_settings(self) -> AppSettings:
+        cur = self._conn.execute("SELECT key, value FROM preferences")
+        values = {row["key"]: row["value"] for row in cur.fetchall()}
+        appearance_mode = values.get("appearance_mode", self.default_settings.appearance_mode)
+        color_theme = values.get("color_theme", self.default_settings.color_theme)
+        font_family = values.get("font_family", self.default_settings.font_family)
+        try:
+            font_size = int(values.get("font_size", self.default_settings.font_size))
+        except (TypeError, ValueError):
+            font_size = self.default_settings.font_size
+        return AppSettings(
+            appearance_mode=appearance_mode,
+            color_theme=color_theme,
+            font_family=font_family,
+            font_size=font_size,
+        )
+
+    def save_settings(self, settings: AppSettings) -> None:
+        cur = self._conn.cursor()
+        preferences = {
+            "appearance_mode": settings.appearance_mode,
+            "color_theme": settings.color_theme,
+            "font_family": settings.font_family,
+            "font_size": str(settings.font_size),
+        }
+        for key, value in preferences.items():
+            cur.execute(
+                """
+                INSERT INTO preferences (key, value)
+                VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value=excluded.value;
+                """,
+                (key, value),
+            )
+        self._conn.commit()
 
     def list_command_sets(self) -> List[CommandSet]:
         cur = self._conn.execute(
