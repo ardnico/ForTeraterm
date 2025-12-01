@@ -3,6 +3,7 @@ import json
 import dataclasses
 from glob import glob
 import subprocess
+import tempfile
 import time
 from .serverdata import ServerDatas
 from .serverdata import MyEncoder
@@ -156,8 +157,16 @@ class ServerFileManage:
         else:
             with open(macro_path,"r",encoding="utf-8") as f:
                 macro_txt = f.read()
-        tmp_macro_path = os.path.join(os.getcwd(),f"tmp_macro_exec_txt{sdata.primaryno}.ttl")
-        tmp_macro_txt = f"""
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            suffix=".ttl",
+            prefix="tmp_macro_exec_",
+            dir=os.getcwd(),
+            delete=False,
+        ) as tmp_macro_file:
+            tmp_macro_path = tmp_macro_file.name
+            tmp_macro_txt = f"""
 ;Setting
 hostname='{self.val_none_check(sdata.hostname)}'
 user='{self.val_none_check(sdata.user)}'
@@ -306,18 +315,20 @@ failmsg='Failed to connect target server'
 :msgbox
 messagebox failmsg titleline
 :eol
-        """
-        with open(tmp_macro_path,"w",encoding="utf-8") as f:
-            f.write(tmp_macro_txt)
+            tmp_macro_file.write(tmp_macro_txt)
+
         launch_server_command = [appconf.get_data("TeratermPath"),f"/M={tmp_macro_path}"]
         if sdata.cdelayperchar:
             launch_server_command.append(f"/CDELAYPERCHAR={str(sdata.cdelayperchar)}")
         if sdata.cdelayperline:
             launch_server_command.append(f"/CDELAYPERLINE={str(sdata.cdelayperline)}")
         launch_server_command += optionsline
-        subprocess.Popen(launch_server_command)
-        time.sleep(3)
-        os.remove(tmp_macro_path)
+        try:
+            subprocess.Popen(launch_server_command)
+            time.sleep(3)
+        finally:
+            if os.path.exists(tmp_macro_path):
+                os.remove(tmp_macro_path)
     
     def val_none_check(self,val):
         if val is None:
