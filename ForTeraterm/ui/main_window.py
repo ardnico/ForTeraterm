@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import messagebox
 from pathlib import Path
 
@@ -10,10 +11,11 @@ import customtkinter as ctk
 
 from ..credential_store import CredentialStore
 from ..launcher import Launcher
-from ..storage import CommandSet, DataStore, Profile
+from ..storage import AppSettings, CommandSet, DataStore, Profile
 from ..ttl_renderer import TTLRenderer
 from .password_dialog import PasswordDialog
 from .profile_dialog import ProfileDialog
+from .settings_dialog import SettingsDialog
 
 
 class MainWindow(ctk.CTk):
@@ -29,12 +31,37 @@ class MainWindow(ctk.CTk):
         self.command_set_cache: dict[int, CommandSet] = {}
         self.history_records = []
 
+        self.settings = self.storage.load_settings()
+        self._apply_theme(self.settings)
+        self._init_fonts()
+
         self._build_ui()
         self._load_profiles()
 
+    def _apply_theme(self, settings: AppSettings) -> None:
+        ctk.set_appearance_mode(settings.appearance_mode)
+        ctk.set_default_color_theme(settings.color_theme)
+
+    def _init_fonts(self) -> None:
+        self.body_font = ctk.CTkFont(family=self.settings.font_family, size=self.settings.font_size)
+        self.tk_body_font = tkfont.Font(family=self.settings.font_family, size=self.settings.font_size)
+
+    def _available_fonts(self) -> list[str]:
+        preferred = ["Arial", "Helvetica", "Consolas", "Meiryo", "MS Gothic", "Yu Gothic UI", "Courier New"]
+        available = set(tkfont.families())
+        options = [name for name in preferred if name in available]
+        if self.settings.font_family not in options:
+            options.append(self.settings.font_family)
+        return options or [self.settings.font_family]
+
     def _build_ui(self) -> None:
-        self.status_bar = ctk.CTkLabel(self, text=self._status_text())
-        self.status_bar.pack(fill=tk.X, pady=(8, 4), padx=8)
+        header = ctk.CTkFrame(self)
+        header.pack(fill=tk.X, pady=(8, 4), padx=8)
+        self.status_bar = ctk.CTkLabel(header, text=self._status_text(), font=self.body_font)
+        self.status_bar.pack(side=tk.LEFT, padx=(4, 8))
+        ctk.CTkButton(header, text="Settings", command=self._open_settings, font=self.body_font).pack(
+            side=tk.RIGHT, padx=4
+        )
 
         main_frame = ctk.CTkFrame(self)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
@@ -42,31 +69,47 @@ class MainWindow(ctk.CTk):
         # Profile list
         left_frame = ctk.CTkFrame(main_frame)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
-        ctk.CTkLabel(left_frame, text="Profiles").pack(anchor=tk.W, padx=6, pady=4)
-        self.profile_list = tk.Listbox(left_frame, exportselection=False)
+        ctk.CTkLabel(left_frame, text="Profiles", font=self.body_font).pack(anchor=tk.W, padx=6, pady=4)
+        self.profile_list = tk.Listbox(left_frame, exportselection=False, font=self.tk_body_font)
         self.profile_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         self.profile_list.bind("<<ListboxSelect>>", lambda event: self._on_select())
 
         btn_frame = ctk.CTkFrame(left_frame)
         btn_frame.pack(fill=tk.X, padx=6, pady=(0, 6))
-        ctk.CTkButton(btn_frame, text="New Profile", command=self._new_profile).pack(side=tk.LEFT, padx=4)
-        ctk.CTkButton(btn_frame, text="Connect", command=self._connect).pack(side=tk.RIGHT, padx=4)
+        ctk.CTkButton(btn_frame, text="New Profile", command=self._new_profile, font=self.body_font).pack(
+            side=tk.LEFT, padx=4
+        )
+        ctk.CTkButton(btn_frame, text="Connect", command=self._connect, font=self.body_font).pack(
+            side=tk.RIGHT, padx=4
+        )
 
         # History
         right_frame = ctk.CTkFrame(main_frame)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-        ctk.CTkLabel(right_frame, text="Recent History").pack(anchor=tk.W, padx=6, pady=4)
+        ctk.CTkLabel(right_frame, text="Recent History", font=self.body_font).pack(anchor=tk.W, padx=6, pady=4)
         filter_frame = ctk.CTkFrame(right_frame)
         filter_frame.pack(fill=tk.X, padx=6, pady=(0, 6))
-        ctk.CTkLabel(filter_frame, text="Result").pack(side=tk.LEFT, padx=4)
+        ctk.CTkLabel(filter_frame, text="Result", font=self.body_font).pack(side=tk.LEFT, padx=4)
         self.result_filter = tk.StringVar(value="all")
-        ctk.CTkOptionMenu(filter_frame, variable=self.result_filter, values=["all", "success", "failed", "unknown"], command=lambda _=None: self._load_history()).pack(side=tk.LEFT, padx=4)
-        ctk.CTkLabel(filter_frame, text="Command Set").pack(side=tk.LEFT, padx=4)
+        ctk.CTkOptionMenu(
+            filter_frame,
+            variable=self.result_filter,
+            values=["all", "success", "failed", "unknown"],
+            command=lambda _=None: self._load_history(),
+            font=self.body_font,
+        ).pack(side=tk.LEFT, padx=4)
+        ctk.CTkLabel(filter_frame, text="Command Set", font=self.body_font).pack(side=tk.LEFT, padx=4)
         self.command_filter = tk.StringVar(value="all")
-        self.command_menu = ctk.CTkOptionMenu(filter_frame, variable=self.command_filter, values=["all"], command=lambda _=None: self._load_history())
+        self.command_menu = ctk.CTkOptionMenu(
+            filter_frame,
+            variable=self.command_filter,
+            values=["all"],
+            command=lambda _=None: self._load_history(),
+            font=self.body_font,
+        )
         self.command_menu.pack(side=tk.LEFT, padx=4)
 
-        self.history_list = tk.Listbox(right_frame, exportselection=False)
+        self.history_list = tk.Listbox(right_frame, exportselection=False, font=self.tk_body_font)
         self.history_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         self.history_list.bind("<Double-Button-1>", lambda event: self._relaunch_history())
 
@@ -93,6 +136,46 @@ class MainWindow(ctk.CTk):
         if index >= len(profiles):
             return None
         return profiles[index]
+
+    def _open_settings(self) -> None:
+        dialog = SettingsDialog(
+            self,
+            current=self.settings,
+            appearance_modes=["system", "light", "dark"],
+            color_themes=["blue", "dark-blue", "green"],
+            font_families=self._available_fonts(),
+        )
+        self.wait_window(dialog)
+        if dialog.result is None:
+            return
+        self.settings = dialog.result
+        self.storage.save_settings(self.settings)
+        self._apply_theme(self.settings)
+        self._init_fonts()
+        self._rebuild_ui()
+
+    def _rebuild_ui(self) -> None:
+        selected_index = None
+        if hasattr(self, "profile_list"):
+            selection = self.profile_list.curselection()
+            if selection:
+                selected_index = selection[0]
+        result_filter_value = self.result_filter.get()
+        command_filter_value = self.command_filter.get()
+
+        for child in self.winfo_children():
+            child.destroy()
+
+        self._build_ui()
+        self._load_profiles()
+
+        if selected_index is not None and self.profile_list.size() > selected_index:
+            self.profile_list.selection_set(selected_index)
+            self._on_select()
+        self.result_filter.set(result_filter_value)
+        if command_filter_value in self.command_menu.cget("values"):
+            self.command_filter.set(command_filter_value)
+        self._load_history()
 
     def _on_select(self) -> None:
         profile = self._get_selected_profile()
