@@ -11,11 +11,13 @@ import customtkinter as ctk
 
 from ..credential_store import CredentialStore
 from ..launcher import Launcher
+from ..ssh_options import parse_ssh_options
 from ..storage import AppSettings, CommandSet, DataStore, Profile
 from ..ttl_renderer import TTLRenderer
 from .password_dialog import PasswordDialog
 from .profile_dialog import ProfileDialog
 from .settings_dialog import SettingsDialog
+from .terminal_window import TerminalWindow
 
 
 class MainWindow(ctk.CTk):
@@ -30,6 +32,11 @@ class MainWindow(ctk.CTk):
         self.selected_profile: Profile | None = None
         self.command_set_cache: dict[int, CommandSet] = {}
         self.history_records = []
+        self.open_terminals: list[TerminalWindow] = []
+
+        self.settings = self.storage.load_settings()
+        self._apply_theme(self.settings)
+        self._init_fonts()
 
         self.settings = self.storage.load_settings()
         self._apply_theme(self.settings)
@@ -79,9 +86,18 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(btn_frame, text="New Profile", command=self._new_profile, font=self.body_font).pack(
             side=tk.LEFT, padx=4
         )
+        ctk.CTkButton(btn_frame, text="Edit Profile", command=self._edit_profile, font=self.body_font).pack(
+            side=tk.LEFT, padx=4
+        )
         ctk.CTkButton(btn_frame, text="Connect", command=self._connect, font=self.body_font).pack(
             side=tk.RIGHT, padx=4
         )
+
+        details_frame = ctk.CTkFrame(left_frame)
+        details_frame.pack(fill=tk.BOTH, expand=False, padx=6, pady=(0, 6))
+        ctk.CTkLabel(details_frame, text="Server Details", font=self.body_font).pack(anchor=tk.W, padx=4, pady=(4, 0))
+        self.details_box = tk.Text(details_frame, height=8, state="disabled", font=self.tk_body_font)
+        self.details_box.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
         # History
         right_frame = ctk.CTkFrame(main_frame)
@@ -109,6 +125,11 @@ class MainWindow(ctk.CTk):
         )
         self.command_menu.pack(side=tk.LEFT, padx=4)
 
+        ctk.CTkButton(filter_frame, text="View Session Log", command=self._view_history_session, font=self.body_font).pack(
+            side=tk.RIGHT,
+            padx=4,
+        )
+
         self.history_list = tk.Listbox(right_frame, exportselection=False, font=self.tk_body_font)
         self.history_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         self.history_list.bind("<Double-Button-1>", lambda event: self._relaunch_history())
@@ -116,17 +137,23 @@ class MainWindow(ctk.CTk):
     def _status_text(self) -> str:
         if self.cred_store.restricted:
             return "Credential Storage: Disabled (restricted mode)"
+        if self.cred_store.mode == "local_encrypted":
+            return "Credential Storage: Enabled (encrypted local vault)"
         return "Credential Storage: Enabled (Windows Credential Manager / keyring)"
 
     def _load_profiles(self) -> None:
         self.profile_list.delete(0, tk.END)
-        for profile in self.storage.list_profiles():
+        profiles = self.storage.list_profiles()
+        for profile in profiles:
             display = f"{profile.name} ({profile.user}@{profile.host}:{profile.port})"
             self.profile_list.insert(tk.END, display)
-        if self.storage.list_profiles():
+        if profiles:
             self.profile_list.selection_set(0)
             self._on_select()
-
+        else:
+            self.selected_profile = None
+            self._update_details()
+        
     def _get_selected_profile(self) -> Profile | None:
         selection = self.profile_list.curselection()
         if not selection:
@@ -182,9 +209,27 @@ class MainWindow(ctk.CTk):
         self.selected_profile = profile
         self._update_command_filter()
         self._load_history()
+        self._update_details()
 
     def _new_profile(self) -> None:
         dialog = ProfileDialog(self, storage=self.storage, cred_store=self.cred_store)
+        self.wait_window(dialog)
+        if dialog.created_profile:
+            self._load_profiles()
+
+    def _edit_profile(self) -> None:
+        profile = self._get_selected_profile()
+        if profile is None:
+            messagebox.showwarning("No profile", "Select a profile to edit")
+            return
+        command_set = self._get_command_set(profile.command_set_id)
+        dialog = ProfileDialog(
+            self,
+            storage=self.storage,
+            cred_store=self.cred_store,
+            existing_profile=profile,
+            command_set=command_set,
+        )
         self.wait_window(dialog)
         if dialog.created_profile:
             self._load_profiles()
@@ -231,6 +276,8 @@ class MainWindow(ctk.CTk):
         except Exception as exc:
             messagebox.showerror("Launch failed", str(exc))
             return
+        if result.wlog_path:
+            self._show_terminal(result.wlog_path, f"Session for {profile.name}")
         if result.result == "success":
             messagebox.showinfo("Success", "Connection flow completed (stub mode)")
         else:
@@ -267,6 +314,8 @@ class MainWindow(ctk.CTk):
         except Exception as exc:
             messagebox.showerror("Launch failed", str(exc))
             return
+        if result.wlog_path:
+            self._show_terminal(result.wlog_path, f"Session for {profile.name}")
         if result.result == "success":
             messagebox.showinfo("Success", "Re-run completed (stub mode)")
         else:
@@ -301,6 +350,55 @@ class MainWindow(ctk.CTk):
             self.history_list.insert(tk.END, summary)
         if not history:
             self.history_list.insert(tk.END, "No history yet")
+
+    def _update_details(self) -> None:
+        self.details_box.configure(state="normal")
+        self.details_box.delete("1.0", tk.END)
+        if not self.selected_profile:
+            self.details_box.insert(tk.END, "Select a profile to see details")
+        else:
+            cs = self._get_command_set(self.selected_profile.command_set_id)
+            forwards, extras = parse_ssh_options(self.selected_profile.ssh_options)
+            lines = [
+                f"Name: {self.selected_profile.name}",
+                f"Host: {self.selected_profile.host}:{self.selected_profile.port}",
+                f"User: {self.selected_profile.user}",
+                f"Auth: {self.selected_profile.auth_type}",
+                f"Credential: {self.selected_profile.cred_ref or '(prompted)'}",
+            ]
+            if forwards:
+                lines.append("Port forwards:")
+                for fwd in forwards:
+                    lines.append(f"  {fwd.local_port} -> {fwd.remote_host}:{fwd.remote_port}")
+            if extras:
+                lines.append(f"Extra SSH options: {extras}")
+            if cs.commands:
+                lines.append("Commands:")
+                for cmd in cs.commands:
+                    lines.append(f"  {cmd}")
+            else:
+                lines.append("Commands: (none)")
+            self.details_box.insert(tk.END, "\n".join(lines))
+        self.details_box.configure(state="disabled")
+
+    def _view_history_session(self) -> None:
+        if not self.history_records:
+            messagebox.showwarning("No history", "No history entries available")
+            return
+        selection = self.history_list.curselection()
+        if not selection:
+            messagebox.showwarning("No selection", "Select a history entry")
+            return
+        record = self.history_records[selection[0]]
+        if not record.wlog_path:
+            messagebox.showwarning("Unavailable", "No session log recorded for this entry")
+            return
+        self._show_terminal(Path(record.wlog_path), f"History {record.connected_at}")
+
+    def _show_terminal(self, wlog_path: Path, title: str) -> None:
+        terminal = TerminalWindow(self, wlog_path, self.tk_body_font)
+        terminal.title(title)
+        self.open_terminals.append(terminal)
 
 
 __all__ = ["MainWindow"]
