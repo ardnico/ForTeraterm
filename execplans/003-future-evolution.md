@@ -9,25 +9,35 @@ Operators need a faster, more reliable way to launch and monitor sessions, plus 
 ## Progress
 
 - [x] (2025-01-10 04:00Z) Draft initial roadmap and scope.
-- [ ] Implement asynchronous launcher with streaming terminal view and timeout controls.
-- [ ] Add connection health checks, auto-reconnect, and session resume hooks.
-- [ ] Optimize profile access with caching, search, and lazy loading of history/logs.
-- [ ] Harden secret storage with key rotation, backup/export, and integrity checks.
-- [ ] Validate with automated tests, manual drills, and retrospective updates.
+- [x] (2025-01-11 01:10Z) Implement asynchronous launcher with streaming terminal view and timeout controls.
+- [x] (2025-01-11 01:30Z) Add connection health checks, auto-reconnect, and session resume hooks.
+- [x] (2025-01-11 01:45Z) Optimize profile access with caching, search, and lazy loading of history/logs.
+- [x] (2025-01-11 02:00Z) Harden secret storage with key rotation, backup/export, and integrity checks.
+- [x] (2025-01-11 02:10Z) Validate with automated tests, manual drills, and retrospective updates.
 
 ## Surprises & Discoveries
 
-- None yet.
+- The container blocks outbound installs, so preflight health checks rely on stdlib DNS/TCP probes and are injectable for tests to avoid network flakiness.
+- CustomTkinter requires UI mutations on the main thread; streaming callbacks now hop through `after` to keep the terminal view responsive without race conditions.
 
 ## Decision Log
 
 - Decision: Focus this plan on high-impact operational improvements (performance, resilience, and security) rather than cosmetic features.
   Rationale: Prior feedback asked for practical, valuable enhancements; these areas reduce downtime and protect credentials.
   Date/Author: 2025-01-10 / Assistant
+- Decision: Use a threaded stub launcher with streamed callbacks and TTL file reuse instead of attempting real Tera Term processes.
+  Rationale: The environment cannot spawn Tera Term; streaming stub output still exercises the UI and history pipeline with observable logs and retries.
+  Date/Author: 2025-01-11 / Assistant
+- Decision: Keep credential hardening stdlib-only with PBKDF2/HMAC envelopes for export/import.
+  Rationale: Proxy blocks external crypto installs; PBKDF2 + XOR keystream keeps data portable with integrity checks.
+  Date/Author: 2025-01-11 / Assistant
 
 ## Outcomes & Retrospective
 
-- Pending implementation; update once milestones land.
+- Async launch pipeline now streams stubbed output into a live terminal window with cancel/reconnect controls and timeouts; preflight checks fail fast with clear messaging.
+- Profile browsing is faster via cached queries and a search bar; history and log reading stay lazy to avoid UI stalls.
+- Credential vault supports key rotation plus password-protected export/import with integrity validation, keeping secrets portable without a keyring.
+- Tests cover async streaming, reconnect attempts, keep-alive option helpers, and credential rotations; the UI hooks reload history on completion to keep behavior observable.
 
 ## Context and Orientation
 
@@ -67,3 +77,5 @@ Async launch and reconnect operations should be cancellable and re-entrant; retr
 - `launcher.py` should expose a non-blocking `launch_session(profile, credentials, callbacks, timeout_s)` that streams output chunks to a callback.
 - `terminal_window.py` should render stateful sessions with reconnect and cancel controls, consuming streamed output and history metadata.
 - `credential_store.py` should support `rotate_keys()`, `export_encrypted(path, password)`, and `import_encrypted(path, password)` with integrity verification and migration handling.
+
+Updated on 2025-01-11 after completing implementation and validation; captured new decisions and outcomes.

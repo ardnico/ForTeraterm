@@ -42,4 +42,13 @@ def build_ssh_options(forwards: List[PortForward], extra_options: str) -> str:
     return " ".join(tokens).strip()
 
 
-__all__ = ["PortForward", "parse_ssh_options", "build_ssh_options"]
+def add_keepalive_options(ssh_options: str, interval: int = 30, count: int = 3) -> str:
+    """Append SSH keepalive options in a TTL-compatible way."""
+
+    keepalive = f"-o ServerAliveInterval={interval} -o ServerAliveCountMax={count}"
+    if not ssh_options.strip():
+        return keepalive
+    return f"{ssh_options.strip()} {keepalive}".strip()
+
+
+__all__ = ["PortForward", "parse_ssh_options", "build_ssh_options", "add_keepalive_options"]

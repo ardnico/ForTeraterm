@@ -98,9 +98,28 @@ class CredentialStore:
         except json.JSONDecodeError:
             raise RuntimeError("Local credential store is corrupted; delete creds.json to regenerate")
 
+    def _load_local_store_plaintext(self) -> Dict[str, dict]:
+        data = self._load_local_store()
+        plaintext: Dict[str, dict] = {}
+        for ref, payload in data.items():
+            plaintext[ref] = {
+                "username": payload.get("username"),
+                "secret": self._decrypt_secret(payload.get("secret", "")),
+            }
+        return plaintext
+
     def _save_local_store(self, data: Dict[str, dict]) -> None:
         creds_path = self.app_dir / "creds.json"
         creds_path.write_text(json.dumps(data), encoding="utf-8")
+
+    def _save_local_plaintext(self, data: Dict[str, dict]) -> None:
+        encrypted: Dict[str, dict] = {}
+        for ref, payload in data.items():
+            encrypted[ref] = {
+                "username": payload.get("username"),
+                "secret": self._encrypt_secret(payload.get("secret", "")),
+            }
+        self._save_local_store(encrypted)
 
     def register(self, label: str, username: Optional[str], secret: str) -> str:
         cred_ref = f"cred:{self._slugify(label)}"
@@ -156,6 +175,52 @@ class CredentialStore:
         data.pop(cred_ref, None)
         self._save_local_store(data)
 
+    def rotate_keys(self) -> None:
+        if self._mode != "local_encrypted":
+            raise RuntimeError("Key rotation only applies to local encrypted mode")
+        plaintext = self._load_local_store_plaintext()
+        key_path = self.app_dir / "master.key"
+        backup_path = self.app_dir / "master.key.bak"
+        if key_path.exists():
+            key_path.replace(backup_path)
+        self._master_key = None
+        self._ensure_local_key()
+        self._save_local_plaintext(plaintext)
+
+    def export_encrypted(self, export_path: Path, password: str) -> None:
+        if self._mode != "local_encrypted":
+            raise RuntimeError("Encrypted export requires local encrypted mode")
+        plaintext = self._load_local_store_plaintext()
+        blob = json.dumps(plaintext).encode("utf-8")
+        salt = secrets.token_bytes(16)
+        key = self._derive_password_key(password, salt)
+        cipher = self._xor_keystream(blob, key)
+        mac = hmac.new(key, blob, hashlib.sha256).digest()
+        payload = {
+            "version": 1,
+            "salt": base64.urlsafe_b64encode(salt).decode("utf-8"),
+            "cipher": base64.urlsafe_b64encode(cipher).decode("utf-8"),
+            "hmac": base64.urlsafe_b64encode(mac).decode("utf-8"),
+        }
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        export_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    def import_encrypted(self, import_path: Path, password: str) -> None:
+        if self._mode != "local_encrypted":
+            raise RuntimeError("Encrypted import requires local encrypted mode")
+        payload = json.loads(import_path.read_text(encoding="utf-8"))
+        if payload.get("version") != 1:
+            raise RuntimeError("Unsupported export version")
+        salt = base64.urlsafe_b64decode(payload["salt"])
+        cipher = base64.urlsafe_b64decode(payload["cipher"])
+        mac = base64.urlsafe_b64decode(payload["hmac"])
+        key = self._derive_password_key(password, salt)
+        plaintext = self._xor_keystream(cipher, key)
+        if not hmac.compare_digest(mac, hmac.new(key, plaintext, hashlib.sha256).digest()):
+            raise RuntimeError("Integrity check failed; wrong password or corrupted file")
+        data = json.loads(plaintext.decode("utf-8"))
+        self._save_local_plaintext(data)
+
     def _generate_secret(self, length: int = 24) -> str:
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(length))
@@ -198,6 +263,18 @@ class CredentialStore:
             counter += 1
         plaintext = bytes(a ^ b for a, b in zip(cipher, keystream[: len(cipher)])).decode("utf-8")
         return plaintext
+
+    def _derive_password_key(self, password: str, salt: bytes) -> bytes:
+        return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200_000, dklen=32)
+
+    def _xor_keystream(self, data: bytes, key: bytes) -> bytes:
+        keystream = bytearray()
+        counter = 0
+        while len(keystream) < len(data):
+            block = hmac.new(key, counter.to_bytes(4, "big"), hashlib.sha256).digest()
+            keystream.extend(block)
+            counter += 1
+        return bytes(a ^ b for a, b in zip(data, keystream))
 
 
 __all__ = ["Credential", "CredentialStore"]

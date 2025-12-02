@@ -30,6 +30,7 @@ class MainWindow(ctk.CTk):
         self.renderer = TTLRenderer(template_root)
         self.launcher = Launcher(self.renderer, self.storage, stub_mode=True)
         self.selected_profile: Profile | None = None
+        self.visible_profiles: list[Profile] = []
         self.command_set_cache: dict[int, CommandSet] = {}
         self.history_records = []
         self.open_terminals: list[TerminalWindow] = []
@@ -73,6 +74,13 @@ class MainWindow(ctk.CTk):
         left_frame = ctk.CTkFrame(main_frame)
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 8))
         ctk.CTkLabel(left_frame, text="Profiles", font=self.body_font).pack(anchor=tk.W, padx=6, pady=4)
+        search_frame = ctk.CTkFrame(left_frame)
+        search_frame.pack(fill=tk.X, padx=6, pady=(0, 4))
+        ctk.CTkLabel(search_frame, text="Search", font=self.body_font).pack(side=tk.LEFT, padx=(0, 6))
+        self.profile_search = tk.StringVar()
+        entry = ctk.CTkEntry(search_frame, textvariable=self.profile_search, font=self.body_font)
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        entry.bind("<KeyRelease>", lambda _event: self._load_profiles())
         self.profile_list = tk.Listbox(left_frame, exportselection=False, font=self.tk_body_font)
         self.profile_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         self.profile_list.bind("<<ListboxSelect>>", lambda event: self._on_select())
@@ -140,10 +148,14 @@ class MainWindow(ctk.CTk):
     def _load_profiles(self) -> None:
         self.profile_list.delete(0, tk.END)
         profiles = self.storage.list_profiles()
-        for profile in profiles:
+        search_term = (self.profile_search.get() or "").strip()
+        if search_term:
+            profiles = self.storage.search_profiles(search_term)
+        self.visible_profiles = profiles
+        for profile in self.visible_profiles:
             display = f"{profile.name} ({profile.user}@{profile.host}:{profile.port})"
             self.profile_list.insert(tk.END, display)
-        if profiles:
+        if self.visible_profiles:
             self.profile_list.selection_set(0)
             self._on_select()
         else:
@@ -155,10 +167,49 @@ class MainWindow(ctk.CTk):
         if not selection:
             return None
         index = selection[0]
-        profiles = self.storage.list_profiles()
-        if index >= len(profiles):
+        if index >= len(self.visible_profiles):
             return None
-        return profiles[index]
+        return self.visible_profiles[index]
+
+    def _open_settings(self) -> None:
+        dialog = SettingsDialog(
+            self,
+            current=self.settings,
+            appearance_modes=["system", "light", "dark"],
+            color_themes=["blue", "dark-blue", "green"],
+            font_families=self._available_fonts(),
+        )
+        self.wait_window(dialog)
+        if dialog.result is None:
+            return
+        self.settings = dialog.result
+        self.storage.save_settings(self.settings)
+        self._apply_theme(self.settings)
+        self._init_fonts()
+        self._rebuild_ui()
+
+    def _rebuild_ui(self) -> None:
+        selected_index = None
+        if hasattr(self, "profile_list"):
+            selection = self.profile_list.curselection()
+            if selection:
+                selected_index = selection[0]
+        result_filter_value = self.result_filter.get()
+        command_filter_value = self.command_filter.get()
+
+        for child in self.winfo_children():
+            child.destroy()
+
+        self._build_ui()
+        self._load_profiles()
+
+        if selected_index is not None and self.profile_list.size() > selected_index:
+            self.profile_list.selection_set(selected_index)
+            self._on_select()
+        self.result_filter.set(result_filter_value)
+        if command_filter_value in self.command_menu.cget("values"):
+            self.command_filter.set(command_filter_value)
+        self._load_history()
 
     def _open_settings(self) -> None:
         dialog = SettingsDialog(
@@ -211,6 +262,25 @@ class MainWindow(ctk.CTk):
         dialog = ProfileDialog(self, storage=self.storage, cred_store=self.cred_store)
         self.wait_window(dialog)
         if dialog.created_profile:
+            self.storage.list_profiles(refresh=True)
+            self._load_profiles()
+
+    def _edit_profile(self) -> None:
+        profile = self._get_selected_profile()
+        if profile is None:
+            messagebox.showwarning("No profile", "Select a profile to edit")
+            return
+        command_set = self._get_command_set(profile.command_set_id)
+        dialog = ProfileDialog(
+            self,
+            storage=self.storage,
+            cred_store=self.cred_store,
+            existing_profile=profile,
+            command_set=command_set,
+        )
+        self.wait_window(dialog)
+        if dialog.created_profile:
+            self.storage.list_profiles(refresh=True)
             self._load_profiles()
 
     def _edit_profile(self) -> None:
@@ -251,34 +321,10 @@ class MainWindow(ctk.CTk):
             messagebox.showwarning("No profile", "Select a profile first")
             return
         command_set = self._get_command_set(profile.command_set_id)
-        credential = None
-        password_fallback = None
-        if profile.cred_ref and not self.cred_store.restricted:
-            credential = self.cred_store.get(profile.cred_ref)
-            if credential is None:
-                if not messagebox.askyesno(
-                    "Credential missing",
-                    "Stored credential not found. Do you want to enter a one-time password?",
-                ):
-                    return
-        if credential is None:
-            dialog = PasswordDialog(self, title="Enter password for this session")
-            self.wait_window(dialog)
-            password_fallback = dialog.password
-            if password_fallback is None:
-                return
-        try:
-            result = self.launcher.launch(profile, command_set, credential, password_fallback)
-        except Exception as exc:
-            messagebox.showerror("Launch failed", str(exc))
+        credential, password_fallback = self._resolve_credentials(profile)
+        if password_fallback is False:
             return
-        if result.wlog_path:
-            self._show_terminal(result.wlog_path, f"Session for {profile.name}")
-        if result.result == "success":
-            messagebox.showinfo("Success", "Connection flow completed (stub mode)")
-        else:
-            messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
-        self._load_history()
+        self._start_session(profile, command_set, credential, password_fallback)
 
     def _relaunch_history(self) -> None:
         if not self.history_records:
@@ -305,18 +351,7 @@ class MainWindow(ctk.CTk):
             password_fallback = dialog.password
             if password_fallback is None:
                 return
-        try:
-            result = self.launcher.launch(profile, command_set, credential, password_fallback)
-        except Exception as exc:
-            messagebox.showerror("Launch failed", str(exc))
-            return
-        if result.wlog_path:
-            self._show_terminal(result.wlog_path, f"Session for {profile.name}")
-        if result.result == "success":
-            messagebox.showinfo("Success", "Re-run completed (stub mode)")
-        else:
-            messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
-        self._load_history()
+        self._start_session(profile, command_set, credential, password_fallback)
 
     def _load_history(self) -> None:
         self.history_list.delete(0, tk.END)
@@ -389,12 +424,90 @@ class MainWindow(ctk.CTk):
         if not record.wlog_path:
             messagebox.showwarning("Unavailable", "No session log recorded for this entry")
             return
-        self._show_terminal(Path(record.wlog_path), f"History {record.connected_at}")
+        self._show_log_terminal(Path(record.wlog_path), f"History {record.connected_at}")
 
-    def _show_terminal(self, wlog_path: Path, title: str) -> None:
-        terminal = TerminalWindow(self, wlog_path, self.tk_body_font)
+    def _show_log_terminal(self, wlog_path: Path, title: str) -> TerminalWindow:
+        terminal = TerminalWindow(self, self.tk_body_font, wlog_path=wlog_path)
         terminal.title(title)
         self.open_terminals.append(terminal)
+        return terminal
+
+    def _show_live_terminal(
+        self,
+        profile: Profile,
+        reconnect_cb,
+        cancel_cb,
+    ) -> TerminalWindow:
+        terminal = TerminalWindow(self, self.tk_body_font, live=True, on_cancel=cancel_cb, on_reconnect=reconnect_cb)
+        terminal.title(f"Live session for {profile.name}")
+        self.open_terminals.append(terminal)
+        return terminal
+
+    def _resolve_credentials(self, profile: Profile) -> tuple[object | None, str | bool | None]:
+        credential = None
+        password_fallback: str | bool | None = None
+        if profile.cred_ref and not self.cred_store.restricted:
+            credential = self.cred_store.get(profile.cred_ref)
+            if credential is None:
+                if not messagebox.askyesno(
+                    "Credential missing",
+                    "Stored credential not found. Do you want to enter a one-time password?",
+                ):
+                    return None, False
+        if credential is None:
+            dialog = PasswordDialog(self, title="Enter password for this session")
+            self.wait_window(dialog)
+            password_fallback = dialog.password
+            if password_fallback is None:
+                return None, False
+        return credential, password_fallback
+
+    def _start_session(
+        self,
+        profile: Profile,
+        command_set: CommandSet,
+        credential,
+        password_fallback,
+    ) -> None:
+        def on_reconnect() -> None:
+            self._start_session(profile, command_set, credential, password_fallback)
+
+        session_handle = None
+
+        def cancel() -> None:
+            if session_handle:
+                session_handle.cancel()
+
+        terminal = self._show_live_terminal(profile, reconnect_cb=on_reconnect, cancel_cb=cancel)
+        terminal.set_status("Connecting...")
+
+        def stream_cb(line: str) -> None:
+            terminal.after(0, lambda: terminal.append_line(line))
+
+        def complete_cb(result) -> None:
+            def finalize() -> None:
+                if result.wlog_path:
+                    terminal.wlog_path = result.wlog_path
+                    terminal.load_from_file()
+                status = "Connected" if result.result == "success" else f"Failed: {result.error_code}"
+                terminal.set_status(status)
+                if result.result == "success":
+                    messagebox.showinfo("Success", "Connection flow completed (stub mode)")
+                else:
+                    messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
+                self._load_history()
+
+            terminal.after(0, finalize)
+
+        session_handle = self.launcher.launch_async(
+            profile,
+            command_set,
+            credential,
+            password_fallback,
+            on_output=stream_cb,
+            on_complete=complete_cb,
+            max_retries=1,
+        )
 
 
 __all__ = ["MainWindow"]

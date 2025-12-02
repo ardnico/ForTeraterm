@@ -1,4 +1,4 @@
-from ForTeraterm.ssh_options import PortForward, build_ssh_options, parse_ssh_options
+from ForTeraterm.ssh_options import PortForward, add_keepalive_options, build_ssh_options, parse_ssh_options
 
 
 def test_parse_and_build_roundtrip() -> None:
@@ -18,3 +18,12 @@ def test_parse_with_invalid_tokens_keeps_extras() -> None:
 def test_build_skips_incomplete_entries() -> None:
     forwards = [PortForward(local_port="", remote_host="", remote_port=""), PortForward("9000", "app", "9000")]
     assert build_ssh_options(forwards, "") == "/FWD=9000=app:9000"
+
+
+def test_add_keepalive_options() -> None:
+    base = "/FWD=2222=localhost:22"
+    keepalive = add_keepalive_options(base, interval=10, count=2)
+    assert "ServerAliveInterval=10" in keepalive
+    assert "ServerAliveCountMax=2" in keepalive
+    standalone = add_keepalive_options("")
+    assert standalone.startswith("-o ServerAliveInterval")

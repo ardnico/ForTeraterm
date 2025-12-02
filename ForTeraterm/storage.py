@@ -75,7 +75,7 @@ class DataStore:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.db_path)
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._ensure_schema()
         self.default_settings = AppSettings(
@@ -84,6 +84,8 @@ class DataStore:
             font_family="Arial",
             font_size=12,
         )
+        self._profile_cache: list[Profile] | None = None
+        self._command_cache: dict[int, CommandSet] = {}
 
     def _ensure_schema(self) -> None:
         cur = self._conn.cursor()
@@ -214,6 +216,8 @@ class DataStore:
         return int(new_id)
 
     def get_command_set(self, command_set_id: int) -> CommandSet:
+        if command_set_id in self._command_cache:
+            return self._command_cache[command_set_id]
         cur = self._conn.execute(
             "SELECT id, ref_id, label, description, commands FROM command_sets WHERE id=?",
             (command_set_id,),
@@ -221,13 +225,15 @@ class DataStore:
         row = cur.fetchone()
         if row is None:
             raise KeyError(f"Command set {command_set_id} not found")
-        return CommandSet(
+        command_set = CommandSet(
             id=row["id"],
             ref_id=row["ref_id"],
             label=row["label"],
             description=row["description"],
             commands=json.loads(row["commands"]),
         )
+        self._command_cache[command_set_id] = command_set
+        return command_set
 
     def find_command_set_by_ref(self, ref_id: str) -> Optional[CommandSet]:
         cur = self._conn.execute(
@@ -344,28 +350,36 @@ class DataStore:
             )
         new_id = cur.fetchone()[0]
         self._conn.commit()
+        self._profile_cache = None
         return int(new_id)
 
-    def list_profiles(self) -> List[Profile]:
-        cur = self._conn.execute(
-            "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles ORDER BY name"
-        )
-        rows = cur.fetchall()
-        return [
-            Profile(
-                id=row["id"],
-                name=row["name"],
-                host=row["host"],
-                port=row["port"],
-                user=row["user"],
-                auth_type=row["auth_type"],
-                cred_ref=row["cred_ref"],
-                ssh_options=row["ssh_options"],
-                ttl_template_version=row["ttl_template_version"],
-                command_set_id=row["command_set_id"],
+    def list_profiles(self, *, refresh: bool = False) -> List[Profile]:
+        if refresh or self._profile_cache is None:
+            cur = self._conn.execute(
+                "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles ORDER BY name"
             )
-            for row in rows
-        ]
+            rows = cur.fetchall()
+            self._profile_cache = [
+                Profile(
+                    id=row["id"],
+                    name=row["name"],
+                    host=row["host"],
+                    port=row["port"],
+                    user=row["user"],
+                    auth_type=row["auth_type"],
+                    cred_ref=row["cred_ref"],
+                    ssh_options=row["ssh_options"],
+                    ttl_template_version=row["ttl_template_version"],
+                    command_set_id=row["command_set_id"],
+                )
+                for row in rows
+            ]
+        return list(self._profile_cache)
+
+    def search_profiles(self, term: str) -> List[Profile]:
+        profiles = self.list_profiles()
+        lowered = term.lower()
+        return [p for p in profiles if lowered in p.name.lower() or lowered in p.host.lower()]
 
     def get_profile(self, profile_id: int) -> Profile:
         cur = self._conn.execute(
@@ -519,6 +533,8 @@ class DataStore:
                 command_set_id=ref_to_id[ref_id],
             )
             self.upsert_profile(new_profile)
+        self._profile_cache = None
+        self._command_cache = {}
 
     def close(self) -> None:
         self._conn.close()
