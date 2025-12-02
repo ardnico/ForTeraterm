@@ -211,6 +211,46 @@ class MainWindow(ctk.CTk):
             self.command_filter.set(command_filter_value)
         self._load_history()
 
+    def _open_settings(self) -> None:
+        dialog = SettingsDialog(
+            self,
+            current=self.settings,
+            appearance_modes=["system", "light", "dark"],
+            color_themes=["blue", "dark-blue", "green"],
+            font_families=self._available_fonts(),
+        )
+        self.wait_window(dialog)
+        if dialog.result is None:
+            return
+        self.settings = dialog.result
+        self.storage.save_settings(self.settings)
+        self._apply_theme(self.settings)
+        self._init_fonts()
+        self._rebuild_ui()
+
+    def _rebuild_ui(self) -> None:
+        selected_index = None
+        if hasattr(self, "profile_list"):
+            selection = self.profile_list.curselection()
+            if selection:
+                selected_index = selection[0]
+        result_filter_value = self.result_filter.get()
+        command_filter_value = self.command_filter.get()
+
+        for child in self.winfo_children():
+            child.destroy()
+
+        self._build_ui()
+        self._load_profiles()
+
+        if selected_index is not None and self.profile_list.size() > selected_index:
+            self.profile_list.selection_set(selected_index)
+            self._on_select()
+        self.result_filter.set(result_filter_value)
+        if command_filter_value in self.command_menu.cget("values"):
+            self.command_filter.set(command_filter_value)
+        self._load_history()
+
     def _on_select(self) -> None:
         profile = self._get_selected_profile()
         self.selected_profile = profile
@@ -241,6 +281,23 @@ class MainWindow(ctk.CTk):
         self.wait_window(dialog)
         if dialog.created_profile:
             self.storage.list_profiles(refresh=True)
+            self._load_profiles()
+
+    def _edit_profile(self) -> None:
+        profile = self._get_selected_profile()
+        if profile is None:
+            messagebox.showwarning("No profile", "Select a profile to edit")
+            return
+        command_set = self._get_command_set(profile.command_set_id)
+        dialog = ProfileDialog(
+            self,
+            storage=self.storage,
+            cred_store=self.cred_store,
+            existing_profile=profile,
+            command_set=command_set,
+        )
+        self.wait_window(dialog)
+        if dialog.created_profile:
             self._load_profiles()
 
     def _get_command_set(self, command_set_id: int) -> CommandSet:
