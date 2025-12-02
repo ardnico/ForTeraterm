@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from pathlib import Path
+
 import keyring
 from keyring.backend import KeyringBackend
 
@@ -31,3 +35,61 @@ def test_standard_mode_with_memory_keyring(monkeypatch) -> None:
     assert retrieved is not None
     assert retrieved.secret == "s3cret"
     assert retrieved.username == "alice"
+
+
+class FailingKeyring(KeyringBackend):
+    priority = 1
+
+    def get_password(self, service: str, username: str) -> str | None:  # pragma: no cover - unused
+        raise RuntimeError("fail")
+
+    def set_password(self, service: str, username: str, password: str) -> None:  # pragma: no cover - unused
+        raise RuntimeError("fail")
+
+    def delete_password(self, service: str, username: str) -> None:  # pragma: no cover - unused
+        raise RuntimeError("fail")
+
+
+def test_local_encrypted_mode(monkeypatch, tmp_path: Path) -> None:
+    keyring.set_keyring(FailingKeyring())
+    app_dir = tmp_path / "appdata"
+    store = CredentialStore(app_id="test-launcher", app_dir=app_dir)
+    assert store.mode == "local_encrypted"
+    cred_ref = store.register("demo", None, "enc-secret")
+    retrieved = store.get(cred_ref)
+    assert retrieved is not None
+    assert retrieved.secret == "enc-secret"
+    store.update(cred_ref, "user", "new-secret")
+    updated = store.get(cred_ref)
+    assert updated is not None
+    assert updated.secret == "new-secret"
+    assert updated.username == "user"
+    store.delete(cred_ref)
+    assert store.get(cred_ref) is None
+
+
+def test_rotation_and_export_import(monkeypatch, tmp_path: Path) -> None:
+    keyring.set_keyring(FailingKeyring())
+    app_dir = tmp_path / "appdata"
+    store = CredentialStore(app_id="test-launcher", app_dir=app_dir)
+    cred_ref = store.register("demo", "alice", "super-secret")
+    store.rotate_keys()
+    after_rotate = store.get(cred_ref)
+    assert after_rotate is not None
+    assert after_rotate.secret == "super-secret"
+
+    export_path = tmp_path / "vault.json"
+    store.export_encrypted(export_path, "password")
+
+    # Simulate a fresh machine by deleting local state and recreating the store
+    for filename in ["creds.json", "master.key"]:
+        try:
+            (app_dir / filename).unlink()
+        except FileNotFoundError:
+            pass
+    restored = CredentialStore(app_id="test-launcher", app_dir=app_dir)
+    restored.import_encrypted(export_path, "password")
+    restored_cred = restored.get(cred_ref)
+    assert restored_cred is not None
+    assert restored_cred.secret == "super-secret"
+    assert restored_cred.username == "alice"
