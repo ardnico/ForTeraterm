@@ -38,10 +38,6 @@ class MainWindow(ctk.CTk):
         self._apply_theme(self.settings)
         self._init_fonts()
 
-        self.settings = self.storage.load_settings()
-        self._apply_theme(self.settings)
-        self._init_fonts()
-
         self._build_ui()
         self._load_profiles()
 
