@@ -25,11 +25,26 @@ class TerminalWindow(ctk.CTkToplevel):
         self.title("Terminal")
         self.geometry("760x460")
         self.resizable(True, True)
-        self.body_font = font
+
+        if isinstance(font, ctk.CTkFont):
+            self.body_font = font
+            self.tk_font = font
+        else:
+            actual = font.actual()
+            self.body_font = ctk.CTkFont(
+                family=actual.get("family"),
+                size=int(actual.get("size", 0) or 12),
+                weight=actual.get("weight"),
+                slant=actual.get("slant"),
+                underline=bool(actual.get("underline")),
+                overstrike=bool(actual.get("overstrike")),
+            )
+            self.tk_font = font
+
         self.on_cancel = on_cancel
         self.on_reconnect = on_reconnect
         self.live = live
-        self.text = tk.Text(self, state="disabled", font=self.body_font, bg="#111", fg="#e5e5e5")
+        self.text = tk.Text(self, state="disabled", font=self.tk_font, bg="#111", fg="#e5e5e5")
         self.text.pack(fill=tk.BOTH, expand=True, padx=8, pady=(8, 2))
         controls = ctk.CTkFrame(self)
         controls.pack(fill=tk.X, padx=8, pady=(0, 8))
