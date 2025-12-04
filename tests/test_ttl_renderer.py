@@ -23,6 +23,7 @@ def sample_profile() -> Profile:
         ssh_options="",
         ttl_template_version="v1-basic",
         command_set_id=1,
+        tags=[],
     )
 
 

@@ -18,6 +18,7 @@ def test_profile_and_history_roundtrip(tmp_path: Path) -> None:
         ssh_options="",
         ttl_template_version="v1-basic",
         command_set_id=cmd_id,
+        tags=[],
     )
     profile_id = db.upsert_profile(profile)
     record = HistoryRecord(
@@ -40,7 +41,7 @@ def test_profile_and_history_roundtrip(tmp_path: Path) -> None:
     filtered = db.list_history_for_profile(profile_id, result_filter="failed")
     assert filtered == []
     exported = db.export_data()
-    assert exported["schema_version"] == 3
+    assert exported["schema_version"] == 4
     assert exported["profiles"][0]["command_set_ids"] == ["cmd:test"]
     assert "exported_at" in exported
     assert db.list_command_sets()
@@ -55,12 +56,16 @@ def test_settings_defaults_and_persistence(tmp_path: Path) -> None:
     assert defaults.color_theme == "blue"
     assert defaults.font_family == "Arial"
     assert defaults.font_size == 12
+    assert defaults.teraterm_path == ""
+    assert defaults.use_stub is True
 
     new_settings = AppSettings(
         appearance_mode="dark",
         color_theme="green",
         font_family="Consolas",
         font_size=14,
+        teraterm_path="/usr/bin/ttermpro",
+        use_stub=False,
     )
     first.save_settings(new_settings)
     first.close()

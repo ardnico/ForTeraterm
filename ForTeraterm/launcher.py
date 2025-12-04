@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import os
 import socket
+import subprocess
 import tempfile
 import threading
 import time
@@ -47,11 +48,13 @@ class Launcher:
         renderer: TTLRenderer,
         storage: DataStore,
         stub_mode: bool = True,
+        teraterm_path: str | None = None,
         preflight_check: Optional[Callable[[Profile], tuple[bool, str]]] = None,
     ) -> None:
         self.renderer = renderer
         self.storage = storage
         self.stub_mode = stub_mode
+        self.teraterm_path = teraterm_path or ""
         self.preflight_check = preflight_check or self._default_preflight
 
     def launch(
@@ -179,7 +182,10 @@ class Launcher:
             )
             raise
         try:
-            if self.stub_mode:
+            use_stub = self.stub_mode or not self.teraterm_path
+            if use_stub:
+                if not self.stub_mode and not self.teraterm_path and on_output:
+                    on_output("Tera Term path not configured; falling back to stub mode")
                 self._run_stub_stream(
                     profile,
                     command_set,
@@ -193,12 +199,27 @@ class Launcher:
                     attempt,
                 )
             else:
-                raise NotImplementedError("Real Tera Term execution not implemented in this environment")
+                self._run_teraterm_stream(
+                    profile,
+                    command_set,
+                    password,
+                    ttl_file,
+                    wlog_path,
+                    cancel_event,
+                    on_output,
+                    start,
+                    timeout_s,
+                )
             error_code = self._analyze_wlog(wlog_path)
             result = "success" if error_code is None else "failed"
         except TimeoutError:
             error_code = "timeout"
             result = "failed"
+        except FileNotFoundError as exc:
+            error_code = "teraterm_missing"
+            result = "failed"
+            if on_output:
+                on_output(str(exc))
         except Exception:
             self._record_history(
                 profile,
@@ -276,6 +297,55 @@ class Launcher:
                 on_output(line)
             time.sleep(0.05)
         wlog.write_text("\n".join(output), encoding="utf-8")
+
+    def _emit_wlog_lines(
+        self,
+        wlog: Path,
+        last_pos: int,
+        on_output: Optional[Callable[[str], None]],
+    ) -> int:
+        if not on_output or not wlog.exists():
+            return last_pos
+        with wlog.open("r", encoding="utf-8", errors="ignore") as handle:
+            handle.seek(last_pos)
+            chunk = handle.read()
+            new_pos = handle.tell()
+        for line in chunk.splitlines():
+            on_output(line)
+        return new_pos
+
+    def _run_teraterm_stream(
+        self,
+        profile: Profile,
+        command_set: CommandSet,
+        password: Optional[str],
+        ttl_file: Path,
+        wlog: Path,
+        cancel_event: threading.Event,
+        on_output: Optional[Callable[[str], None]],
+        start: float,
+        timeout_s: float,
+    ) -> None:
+        if not self.teraterm_path:
+            raise FileNotFoundError("Tera Term executable path is not configured")
+
+        cmd = [self.teraterm_path, f"/R={ttl_file}", f"/W={wlog}"]
+        if on_output:
+            on_output(f"Launching Tera Term: {' '.join(cmd)}")
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        last_pos = 0
+        while proc.poll() is None:
+            if cancel_event.is_set():
+                proc.terminate()
+                raise TimeoutError("Launch cancelled")
+            if time.monotonic() - start > timeout_s:
+                proc.terminate()
+                raise TimeoutError("Launch exceeded timeout")
+            last_pos = self._emit_wlog_lines(wlog, last_pos, on_output)
+            time.sleep(0.1)
+        last_pos = self._emit_wlog_lines(wlog, last_pos, on_output)
+        if proc.returncode not in (0, None) and on_output:
+            on_output(f"Tera Term exited with code {proc.returncode}")
 
     def _analyze_wlog(self, wlog_path: Path) -> Optional[str]:
         content = wlog_path.read_text(encoding="utf-8")

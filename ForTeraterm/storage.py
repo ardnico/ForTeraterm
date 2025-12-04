@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import List, Optional
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 @dataclass
@@ -42,6 +42,7 @@ class Profile:
     ssh_options: str
     ttl_template_version: str
     command_set_id: int
+    tags: list[str]
 
 
 @dataclass
@@ -52,6 +53,8 @@ class AppSettings:
     color_theme: str
     font_family: str
     font_size: int
+    teraterm_path: str
+    use_stub: bool
 
 
 @dataclass
@@ -83,9 +86,12 @@ class DataStore:
             color_theme="blue",
             font_family="Arial",
             font_size=12,
+            teraterm_path="",
+            use_stub=True,
         )
         self._profile_cache: list[Profile] | None = None
         self._command_cache: dict[int, CommandSet] = {}
+        self.ensure_default_command_sets()
 
     def _ensure_schema(self) -> None:
         cur = self._conn.cursor()
@@ -128,6 +134,7 @@ class DataStore:
                 ssh_options TEXT NOT NULL DEFAULT '',
                 ttl_template_version TEXT NOT NULL,
                 command_set_id INTEGER NOT NULL,
+                tags TEXT NOT NULL DEFAULT '[]',
                 FOREIGN KEY(command_set_id) REFERENCES command_sets(id)
             );
             """
@@ -175,6 +182,9 @@ class DataStore:
                 """
             )
             version = 3
+        if version == 3:
+            cur.execute("ALTER TABLE profiles ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'")
+            version = 4
         self._conn.execute(f"PRAGMA user_version={version}")
         self._conn.commit()
 
@@ -251,6 +261,33 @@ class DataStore:
             commands=json.loads(row["commands"]),
         )
 
+    def ensure_default_command_sets(self) -> None:
+        """Seed built-in command sets for common diagnostics."""
+
+        defaults = [
+            CommandSet(
+                id=None,
+                ref_id="preset:system-health",
+                label="System Health",
+                description="Check CPU, memory, disk, and uptime",
+                commands=[
+                    "uname -a",
+                    "cat /etc/os-release | head -n 1",
+                    "uptime",
+                    "free -h",
+                    "df -h",
+                    "top -b -n 1 | head -n 10",
+                ],
+            )
+        ]
+
+        for cmd_set in defaults:
+            existing = self.find_command_set_by_ref(cmd_set.ref_id)
+            if existing:
+                cmd_set.id = existing.id
+                continue
+            cmd_set.id = self.upsert_command_set(cmd_set)
+
     # ---------- Preferences ----------
     def load_settings(self) -> AppSettings:
         cur = self._conn.execute("SELECT key, value FROM preferences")
@@ -262,11 +299,16 @@ class DataStore:
             font_size = int(values.get("font_size", self.default_settings.font_size))
         except (TypeError, ValueError):
             font_size = self.default_settings.font_size
+        teraterm_path = values.get("teraterm_path", self.default_settings.teraterm_path)
+        use_stub_str = values.get("use_stub", "true" if self.default_settings.use_stub else "false")
+        use_stub = str(use_stub_str).lower() not in {"false", "0", "no"}
         return AppSettings(
             appearance_mode=appearance_mode,
             color_theme=color_theme,
             font_family=font_family,
             font_size=font_size,
+            teraterm_path=teraterm_path,
+            use_stub=use_stub,
         )
 
     def save_settings(self, settings: AppSettings) -> None:
@@ -276,6 +318,8 @@ class DataStore:
             "color_theme": settings.color_theme,
             "font_family": settings.font_family,
             "font_size": str(settings.font_size),
+            "teraterm_path": settings.teraterm_path,
+            "use_stub": "1" if settings.use_stub else "0",
         }
         for key, value in preferences.items():
             cur.execute(
@@ -307,12 +351,13 @@ class DataStore:
     # ---------- Profiles ----------
     def upsert_profile(self, profile: Profile) -> int:
         cur = self._conn.cursor()
+        tags_json = json.dumps(profile.tags)
         if profile.id is None:
             cur.execute(
                 """
                 INSERT INTO profiles
-                    (name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id, tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id;
                 """,
                 (
@@ -325,13 +370,14 @@ class DataStore:
                     profile.ssh_options,
                     profile.ttl_template_version,
                     profile.command_set_id,
+                    tags_json,
                 ),
             )
         else:
             cur.execute(
                 """
                 UPDATE profiles
-                   SET name=?, host=?, port=?, user=?, auth_type=?, cred_ref=?, ssh_options=?, ttl_template_version=?, command_set_id=?
+                   SET name=?, host=?, port=?, user=?, auth_type=?, cred_ref=?, ssh_options=?, ttl_template_version=?, command_set_id=?, tags=?
                  WHERE id=?
                 RETURNING id;
                 """,
@@ -345,6 +391,7 @@ class DataStore:
                     profile.ssh_options,
                     profile.ttl_template_version,
                     profile.command_set_id,
+                    tags_json,
                     profile.id,
                 ),
             )
@@ -356,7 +403,7 @@ class DataStore:
     def list_profiles(self, *, refresh: bool = False) -> List[Profile]:
         if refresh or self._profile_cache is None:
             cur = self._conn.execute(
-                "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles ORDER BY name"
+                "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id, tags FROM profiles ORDER BY name"
             )
             rows = cur.fetchall()
             self._profile_cache = [
@@ -371,6 +418,7 @@ class DataStore:
                     ssh_options=row["ssh_options"],
                     ttl_template_version=row["ttl_template_version"],
                     command_set_id=row["command_set_id"],
+                    tags=json.loads(row["tags"] or "[]"),
                 )
                 for row in rows
             ]
@@ -379,11 +427,15 @@ class DataStore:
     def search_profiles(self, term: str) -> List[Profile]:
         profiles = self.list_profiles()
         lowered = term.lower()
-        return [p for p in profiles if lowered in p.name.lower() or lowered in p.host.lower()]
+        return [
+            p
+            for p in profiles
+            if lowered in p.name.lower() or lowered in p.host.lower() or any(lowered in tag.lower() for tag in p.tags)
+        ]
 
     def get_profile(self, profile_id: int) -> Profile:
         cur = self._conn.execute(
-            "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id FROM profiles WHERE id=?",
+            "SELECT id, name, host, port, user, auth_type, cred_ref, ssh_options, ttl_template_version, command_set_id, tags FROM profiles WHERE id=?",
             (profile_id,),
         )
         row = cur.fetchone()
@@ -400,6 +452,7 @@ class DataStore:
             ssh_options=row["ssh_options"],
             ttl_template_version=row["ttl_template_version"],
             command_set_id=row["command_set_id"],
+            tags=json.loads(row["tags"] or "[]"),
         )
 
     # ---------- History ----------
@@ -484,6 +537,7 @@ class DataStore:
                     "ssh_options": profile.ssh_options,
                     "ttl_template_version": profile.ttl_template_version,
                     "command_set_ids": [self.get_command_set(profile.command_set_id).ref_id],
+                    "tags": list(profile.tags),
                 }
                 for profile in profiles
             ],
@@ -531,6 +585,7 @@ class DataStore:
                 ssh_options=profile.get("ssh_options", ""),
                 ttl_template_version=profile.get("ttl_template_version", "v1-basic"),
                 command_set_id=ref_to_id[ref_id],
+                tags=profile.get("tags") or [],
             )
             self.upsert_profile(new_profile)
         self._profile_cache = None

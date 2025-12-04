@@ -35,6 +35,13 @@ class ProfileDialog(ctk.CTkToplevel):
         self.forward_rows: list[dict[str, ctk.CTkEntry]] = []
 
         self._build_form()
+        if existing_profile is None and self.command_set is None:
+            preset = self.storage.find_command_set_by_ref("preset:system-health")
+            if preset:
+                self.command_set = preset
+                self.command_label_entry.delete(0, tk.END)
+                self.command_label_entry.insert(0, preset.label)
+                self.command_text.insert("1.0", "\n".join(preset.commands))
         if existing_profile:
             self._populate(existing_profile, command_set)
 
@@ -52,47 +59,49 @@ class ProfileDialog(ctk.CTkToplevel):
             row=4, column=1, sticky=tk.EW, padx=4, pady=4
         )
 
-        ctk.CTkLabel(body, text="Port Forwardings").grid(row=5, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        self.tags_entry = self._add_entry(body, "Tags (comma-separated)", 5)
+
+        ctk.CTkLabel(body, text="Port Forwardings").grid(row=6, column=0, sticky=tk.W, padx=4, pady=(12, 4))
         self.forward_frame = ctk.CTkFrame(body)
-        self.forward_frame.grid(row=6, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=(0, 4))
+        self.forward_frame.grid(row=7, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=(0, 4))
         self._add_forward_row()
         ctk.CTkButton(body, text="Add Forward", command=self._add_forward_row).grid(
-            row=7, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=(0, 8)
+            row=8, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=(0, 8)
         )
 
-        ctk.CTkLabel(body, text="Additional SSH Options").grid(row=8, column=0, sticky=tk.W, padx=4, pady=(4, 4))
+        ctk.CTkLabel(body, text="Additional SSH Options").grid(row=9, column=0, sticky=tk.W, padx=4, pady=(4, 4))
         self.extra_ssh_entry = ctk.CTkEntry(body)
-        self.extra_ssh_entry.grid(row=8, column=1, sticky=tk.EW, padx=4, pady=(4, 4))
+        self.extra_ssh_entry.grid(row=9, column=1, sticky=tk.EW, padx=4, pady=(4, 4))
         ctk.CTkLabel(body, text="(e.g. -v or other flags; /FWD entries are managed above)").grid(
-            row=9, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
+            row=10, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
         )
 
-        self.command_label_entry = self._add_entry(body, "Command Set Label", 10, default="Default Commands")
-        ctk.CTkLabel(body, text="Commands (one per line)").grid(row=11, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        self.command_label_entry = self._add_entry(body, "Command Set Label", 11, default="Default Commands")
+        ctk.CTkLabel(body, text="Commands (one per line)").grid(row=12, column=0, sticky=tk.W, padx=4, pady=(12, 4))
         self.command_text = tk.Text(body, height=5, width=40)
-        self.command_text.grid(row=12, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4)
+        self.command_text.grid(row=13, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4)
         ctk.CTkLabel(body, text="(Optional) Leave blank to skip post-login commands.").grid(
-            row=13, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
+            row=14, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(0, 8)
         )
 
-        ctk.CTkLabel(body, text="Credential Reference").grid(row=14, column=0, sticky=tk.W, padx=4, pady=(12, 4))
+        ctk.CTkLabel(body, text="Credential Reference").grid(row=15, column=0, sticky=tk.W, padx=4, pady=(12, 4))
         self.cred_var = tk.StringVar(value="(none)")
         self.cred_options = ["(none)"] + self.storage.list_credential_refs()
         self.cred_menu = ctk.CTkOptionMenu(body, variable=self.cred_var, values=self.cred_options, state="normal")
-        self.cred_menu.grid(row=14, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
+        self.cred_menu.grid(row=15, column=1, sticky=tk.EW, padx=4, pady=(12, 4))
         ctk.CTkButton(body, text="New Credential", command=self._new_credential).grid(
-            row=15, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4
+            row=16, column=0, columnspan=2, sticky=tk.EW, padx=4, pady=4
         )
 
         if self.cred_store.restricted:
             self.cred_menu.configure(state="disabled")
             ctk.CTkLabel(body, text="Credential storage disabled; password will be requested at connect time.").grid(
-                row=16, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=17, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
         else:
             mode_label = "keyring" if self.cred_store.mode == "standard" else "encrypted local vault"
             ctk.CTkLabel(body, text=f"Credentials stored securely via {mode_label}").grid(
-                row=16, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
+                row=17, column=0, columnspan=2, sticky=tk.W, padx=4, pady=(4, 12)
             )
 
         button_frame = ctk.CTkFrame(self)
@@ -178,6 +187,8 @@ class ProfileDialog(ctk.CTkToplevel):
             for forward in forwards:
                 self._add_forward_row(forward)
         self.extra_ssh_entry.insert(0, extras)
+        if profile.tags:
+            self.tags_entry.insert(0, ", ".join(profile.tags))
         if command_set:
             self.command_label_entry.delete(0, tk.END)
             self.command_label_entry.insert(0, command_set.label)
@@ -204,6 +215,7 @@ class ProfileDialog(ctk.CTkToplevel):
             messagebox.showerror("Error", "Port must be a number")
             return
         commands = [line.strip() for line in self.command_text.get("1.0", tk.END).splitlines() if line.strip()]
+        tags = [tag.strip() for tag in self.tags_entry.get().split(",") if tag.strip()]
 
         cred_ref: str | None = None
         if not self.cred_store.restricted and self.cred_var.get() != "(none)":
@@ -236,6 +248,7 @@ class ProfileDialog(ctk.CTkToplevel):
             ssh_options=ssh_options,
             ttl_template_version="v1-basic",
             command_set_id=command_set_id,
+            tags=tags,
         )
         profile_id = self.storage.upsert_profile(profile)
         profile.id = profile_id
