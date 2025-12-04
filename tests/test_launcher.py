@@ -51,6 +51,7 @@ def _create_profile_and_commands(storage: DataStore) -> tuple[Profile, CommandSe
         ssh_options="",
         ttl_template_version="v1-basic",
         command_set_id=cmd_id,
+        tags=[],
     )
     profile_id = storage.upsert_profile(profile)
     profile.id = profile_id

@@ -28,7 +28,7 @@ class MainWindow(ctk.CTk):
         self.storage = DataStore(db_path)
         self.cred_store = CredentialStore()
         self.renderer = TTLRenderer(template_root)
-        self.launcher = Launcher(self.renderer, self.storage, stub_mode=True)
+        self.launcher = None
         self.selected_profile: Profile | None = None
         self.visible_profiles: list[Profile] = []
         self.command_set_cache: dict[int, CommandSet] = {}
@@ -36,15 +36,29 @@ class MainWindow(ctk.CTk):
         self.open_terminals: list[TerminalWindow] = []
 
         self.settings = self.storage.load_settings()
+        self.launcher = self._create_launcher()
         self._apply_theme(self.settings)
         self._init_fonts()
 
+        self.tag_filter = tk.StringVar()
+        self.session_command_choice = tk.StringVar(value="(profile default)")
+        self.command_preset_map: dict[str, CommandSet] = {}
+
         self._build_ui()
+        self._refresh_command_presets()
         self._load_profiles()
 
     def _apply_theme(self, settings: AppSettings) -> None:
         ctk.set_appearance_mode(settings.appearance_mode)
         ctk.set_default_color_theme(settings.color_theme)
+
+    def _create_launcher(self) -> Launcher:
+        return Launcher(
+            self.renderer,
+            self.storage,
+            stub_mode=self.settings.use_stub,
+            teraterm_path=self.settings.teraterm_path,
+        )
 
     def _init_fonts(self) -> None:
         self.body_font = ctk.CTkFont(family=self.settings.font_family, size=self.settings.font_size)
@@ -81,6 +95,10 @@ class MainWindow(ctk.CTk):
         entry = ctk.CTkEntry(search_frame, textvariable=self.profile_search, font=self.body_font)
         entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         entry.bind("<KeyRelease>", lambda _event: self._load_profiles())
+        ctk.CTkLabel(search_frame, text="Tags", font=self.body_font).pack(side=tk.LEFT, padx=(6, 6))
+        tag_entry = ctk.CTkEntry(search_frame, textvariable=self.tag_filter, font=self.body_font, width=120)
+        tag_entry.pack(side=tk.LEFT, padx=(0, 4))
+        tag_entry.bind("<KeyRelease>", lambda _event: self._load_profiles())
         self.profile_list = tk.Listbox(left_frame, exportselection=False, font=self.tk_body_font)
         self.profile_list.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
         self.profile_list.bind("<<ListboxSelect>>", lambda event: self._on_select())
@@ -93,9 +111,14 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(btn_frame, text="Edit Profile", command=self._edit_profile, font=self.body_font).pack(
             side=tk.LEFT, padx=4
         )
-        ctk.CTkButton(btn_frame, text="Connect", command=self._connect, font=self.body_font).pack(
-            side=tk.RIGHT, padx=4
+        self.command_preset_menu = ctk.CTkOptionMenu(
+            btn_frame,
+            variable=self.session_command_choice,
+            values=["(profile default)"],
+            font=self.body_font,
         )
+        self.command_preset_menu.pack(side=tk.RIGHT, padx=4)
+        ctk.CTkButton(btn_frame, text="Connect", command=self._connect, font=self.body_font).pack(side=tk.RIGHT, padx=4)
 
         details_frame = ctk.CTkFrame(left_frame)
         details_frame.pack(fill=tk.BOTH, expand=False, padx=6, pady=(0, 6))
@@ -151,9 +174,13 @@ class MainWindow(ctk.CTk):
         search_term = (self.profile_search.get() or "").strip()
         if search_term:
             profiles = self.storage.search_profiles(search_term)
+        tag_term = (self.tag_filter.get() or "").strip().lower()
+        if tag_term:
+            profiles = [p for p in profiles if any(tag_term in tag.lower() for tag in p.tags)]
         self.visible_profiles = profiles
         for profile in self.visible_profiles:
-            display = f"{profile.name} ({profile.user}@{profile.host}:{profile.port})"
+            tag_text = f" [{', '.join(profile.tags)}]" if profile.tags else ""
+            display = f"{profile.name} ({profile.user}@{profile.host}:{profile.port}){tag_text}"
             self.profile_list.insert(tk.END, display)
         if self.visible_profiles:
             self.profile_list.selection_set(0)
@@ -186,6 +213,8 @@ class MainWindow(ctk.CTk):
         self.storage.save_settings(self.settings)
         self._apply_theme(self.settings)
         self._init_fonts()
+        self.launcher = self._create_launcher()
+        self._refresh_command_presets()
         self._rebuild_ui()
 
     def _rebuild_ui(self) -> None:
@@ -196,51 +225,15 @@ class MainWindow(ctk.CTk):
                 selected_index = selection[0]
         result_filter_value = self.result_filter.get()
         command_filter_value = self.command_filter.get()
+        preset_value = self.session_command_choice.get()
 
         for child in self.winfo_children():
             child.destroy()
 
         self._build_ui()
-        self._load_profiles()
-
-        if selected_index is not None and self.profile_list.size() > selected_index:
-            self.profile_list.selection_set(selected_index)
-            self._on_select()
-        self.result_filter.set(result_filter_value)
-        if command_filter_value in self.command_menu.cget("values"):
-            self.command_filter.set(command_filter_value)
-        self._load_history()
-
-    def _open_settings(self) -> None:
-        dialog = SettingsDialog(
-            self,
-            current=self.settings,
-            appearance_modes=["system", "light", "dark"],
-            color_themes=["blue", "dark-blue", "green"],
-            font_families=self._available_fonts(),
-        )
-        self.wait_window(dialog)
-        if dialog.result is None:
-            return
-        self.settings = dialog.result
-        self.storage.save_settings(self.settings)
-        self._apply_theme(self.settings)
-        self._init_fonts()
-        self._rebuild_ui()
-
-    def _rebuild_ui(self) -> None:
-        selected_index = None
-        if hasattr(self, "profile_list"):
-            selection = self.profile_list.curselection()
-            if selection:
-                selected_index = selection[0]
-        result_filter_value = self.result_filter.get()
-        command_filter_value = self.command_filter.get()
-
-        for child in self.winfo_children():
-            child.destroy()
-
-        self._build_ui()
+        self._refresh_command_presets()
+        if preset_value in self.command_preset_menu.cget("values"):
+            self.session_command_choice.set(preset_value)
         self._load_profiles()
 
         if selected_index is not None and self.profile_list.size() > selected_index:
@@ -254,6 +247,7 @@ class MainWindow(ctk.CTk):
     def _on_select(self) -> None:
         profile = self._get_selected_profile()
         self.selected_profile = profile
+        self.session_command_choice.set("(profile default)")
         self._update_command_filter()
         self._load_history()
         self._update_details()
@@ -264,6 +258,7 @@ class MainWindow(ctk.CTk):
         if dialog.created_profile:
             self.storage.list_profiles(refresh=True)
             self._load_profiles()
+            self._refresh_command_presets()
 
     def _edit_profile(self) -> None:
         profile = self._get_selected_profile()
@@ -282,6 +277,7 @@ class MainWindow(ctk.CTk):
         if dialog.created_profile:
             self.storage.list_profiles(refresh=True)
             self._load_profiles()
+            self._refresh_command_presets()
 
     def _edit_profile(self) -> None:
         profile = self._get_selected_profile()
@@ -298,12 +294,29 @@ class MainWindow(ctk.CTk):
         )
         self.wait_window(dialog)
         if dialog.created_profile:
+            self.storage.list_profiles(refresh=True)
             self._load_profiles()
+            self._refresh_command_presets()
 
     def _get_command_set(self, command_set_id: int) -> CommandSet:
         if command_set_id not in self.command_set_cache:
             self.command_set_cache[command_set_id] = self.storage.get_command_set(command_set_id)
         return self.command_set_cache[command_set_id]
+
+    def _refresh_command_presets(self) -> None:
+        sets = self.storage.list_command_sets()
+        self.command_preset_map = {cs.label: cs for cs in sets}
+        values = ["(profile default)"] + [cs.label for cs in sets]
+        if hasattr(self, "command_preset_menu"):
+            self.command_preset_menu.configure(values=values)
+        if self.session_command_choice.get() not in values:
+            self.session_command_choice.set("(profile default)")
+
+    def _resolve_session_command_set(self, profile: Profile, fallback: CommandSet) -> CommandSet:
+        label = self.session_command_choice.get()
+        if label and label in self.command_preset_map:
+            return self.command_preset_map[label]
+        return fallback
 
     def _update_command_filter(self) -> None:
         if not self.selected_profile:
@@ -320,7 +333,8 @@ class MainWindow(ctk.CTk):
         if profile is None:
             messagebox.showwarning("No profile", "Select a profile first")
             return
-        command_set = self._get_command_set(profile.command_set_id)
+        base_command_set = self._get_command_set(profile.command_set_id)
+        command_set = self._resolve_session_command_set(profile, base_command_set)
         credential, password_fallback = self._resolve_credentials(profile)
         if password_fallback is False:
             return
@@ -337,7 +351,8 @@ class MainWindow(ctk.CTk):
         if profile is None:
             return
         try:
-            command_set = self._get_command_set(record.command_set_id or profile.command_set_id)
+            base_command_set = self._get_command_set(record.command_set_id or profile.command_set_id)
+            command_set = self._resolve_session_command_set(profile, base_command_set)
         except Exception:
             messagebox.showerror("Error", "Command set missing for this history entry")
             return
@@ -396,6 +411,7 @@ class MainWindow(ctk.CTk):
                 f"User: {self.selected_profile.user}",
                 f"Auth: {self.selected_profile.auth_type}",
                 f"Credential: {self.selected_profile.cred_ref or '(prompted)'}",
+                f"Tags: {', '.join(self.selected_profile.tags) if self.selected_profile.tags else '(none)'}",
             ]
             if forwards:
                 lines.append("Port forwards:")
@@ -492,7 +508,10 @@ class MainWindow(ctk.CTk):
                 status = "Connected" if result.result == "success" else f"Failed: {result.error_code}"
                 terminal.set_status(status)
                 if result.result == "success":
-                    messagebox.showinfo("Success", "Connection flow completed (stub mode)")
+                    if self.settings.use_stub:
+                        messagebox.showinfo("Success", "Connection flow completed (stub mode)")
+                    else:
+                        messagebox.showinfo("Success", "Tera Term launched. Keep the terminal open to continue working.")
                 else:
                     messagebox.showwarning("Failed", f"Connection failed: {result.error_code}")
                 self._load_history()
